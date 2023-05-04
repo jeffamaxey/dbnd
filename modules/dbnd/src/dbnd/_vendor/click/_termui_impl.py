@@ -119,15 +119,11 @@ class ProgressBar(object):
 
     @property
     def pct(self):
-        if self.finished:
-            return 1.0
-        return min(self.pos / (float(self.length) or 1), 1.0)
+        return 1.0 if self.finished else min(self.pos / (float(self.length) or 1), 1.0)
 
     @property
     def time_per_iteration(self):
-        if not self.avg:
-            return 0.0
-        return sum(self.avg) / float(len(self.avg))
+        return sum(self.avg) / float(len(self.avg)) if self.avg else 0.0
 
     @property
     def eta(self):
@@ -136,25 +132,25 @@ class ProgressBar(object):
         return 0.0
 
     def format_eta(self):
-        if self.eta_known:
-            t = int(self.eta)
-            seconds = t % 60
-            t //= 60
-            minutes = t % 60
-            t //= 60
-            hours = t % 24
-            t //= 24
-            if t > 0:
-                days = t
-                return '%dd %02d:%02d:%02d' % (days, hours, minutes, seconds)
-            else:
-                return '%02d:%02d:%02d' % (hours, minutes, seconds)
-        return ''
+        if not self.eta_known:
+            return ''
+        t = int(self.eta)
+        seconds = t % 60
+        t //= 60
+        minutes = t % 60
+        t //= 60
+        hours = t % 24
+        t //= 24
+        return (
+            '%dd %02d:%02d:%02d' % (t, hours, minutes, seconds)
+            if t > 0
+            else '%02d:%02d:%02d' % (hours, minutes, seconds)
+        )
 
     def format_pos(self):
         pos = str(self.pos)
         if self.length_known:
-            pos += '/%s' % self.length
+            pos += f'/{self.length}'
         return pos
 
     def format_pct(self):
@@ -213,8 +209,7 @@ class ProgressBar(object):
             clutter_length = term_len(self.format_progress_line())
             new_width = max(0, get_terminal_size()[0] - clutter_length)
             if new_width < old_width:
-                buf.append(BEFORE_BAR)
-                buf.append(' ' * self.max_width)
+                buf.extend((BEFORE_BAR, ' ' * self.max_width))
                 self.max_width = new_width
             self.width = new_width
 
@@ -228,8 +223,7 @@ class ProgressBar(object):
         if self.max_width is None or self.max_width < line_len:
             self.max_width = line_len
 
-        buf.append(line)
-        buf.append(' ' * (clear_width - line_len))
+        buf.extend((line, ' ' * (clear_width - line_len)))
         line = ''.join(buf)
         # Render the line only if it changed.
 
@@ -292,8 +286,7 @@ class ProgressBar(object):
             raise RuntimeError('You need to use progress bars in a with block.')
 
         if self.is_hidden:
-            for rv in self.iter:
-                yield rv
+            yield from self.iter
         else:
             for rv in self.iter:
                 self.current_item = rv
@@ -308,8 +301,7 @@ def pager(generator, color=None):
     stdout = _default_text_stdout()
     if not isatty(sys.stdin) or not isatty(stdout):
         return _nullpager(stdout, generator, color)
-    pager_cmd = (os.environ.get('PAGER', None) or '').strip()
-    if pager_cmd:
+    if pager_cmd := (os.environ.get('PAGER', None) or '').strip():
         if WIN:
             return _tempfilepager(generator, pager_cmd, color)
         return _pipepager(generator, pager_cmd, color)
@@ -324,7 +316,7 @@ def pager(generator, color=None):
     fd, filename = tempfile.mkstemp()
     os.close(fd)
     try:
-        if hasattr(os, 'system') and os.system('more "%s"' % filename) == 0:
+        if hasattr(os, 'system') and os.system(f'more "{filename}"') == 0:
             return _pipepager(generator, 'more', color)
         return _nullpager(stdout, generator, color)
     finally:
@@ -392,7 +384,7 @@ def _tempfilepager(generator, cmd, color):
     with open_stream(filename, 'wb')[0] as f:
         f.write(text.encode(encoding))
     try:
-        os.system(cmd + ' "' + filename + '"')
+        os.system(f'{cmd} "{filename}"')
     finally:
         os.unlink(filename)
 
@@ -417,33 +409,35 @@ class Editor(object):
     def get_editor(self):
         if self.editor is not None:
             return self.editor
-        for key in 'VISUAL', 'EDITOR':
-            rv = os.environ.get(key)
-            if rv:
+        for key in ('VISUAL', 'EDITOR'):
+            if rv := os.environ.get(key):
                 return rv
         if WIN:
             return 'notepad'
-        for editor in 'vim', 'nano':
-            if os.system('which %s >/dev/null 2>&1' % editor) == 0:
-                return editor
-        return 'vi'
+        return next(
+            (
+                editor
+                for editor in ('vim', 'nano')
+                if os.system(f'which {editor} >/dev/null 2>&1') == 0
+            ),
+            'vi',
+        )
 
     def edit_file(self, filename):
         import subprocess
         editor = self.get_editor()
         if self.env:
             environ = os.environ.copy()
-            environ.update(self.env)
+            environ |= self.env
         else:
             environ = None
         try:
-            c = subprocess.Popen('%s "%s"' % (editor, filename),
-                                 env=environ, shell=True)
+            c = subprocess.Popen(f'{editor} "{filename}"', env=environ, shell=True)
             exit_code = c.wait()
             if exit_code != 0:
-                raise ClickException('%s: Editing failed!' % editor)
+                raise ClickException(f'{editor}: Editing failed!')
         except OSError as e:
-            raise ClickException('%s: Editing failed: %s' % (editor, e))
+            raise ClickException(f'{editor}: Editing failed: {e}')
 
     def edit(self, text):
         import tempfile
@@ -472,7 +466,7 @@ class Editor(object):
             self.edit_file(name)
 
             if self.require_save \
-               and os.path.getmtime(name) == timestamp:
+                   and os.path.getmtime(name) == timestamp:
                 return None
 
             f = open(name, 'rb')
@@ -480,10 +474,7 @@ class Editor(object):
                 rv = f.read()
             finally:
                 f.close()
-            if binary_data:
-                return rv
-            else:
-                return rv.decode('utf-8-sig').replace('\r\n', '\n')
+            return rv if binary_data else rv.decode('utf-8-sig').replace('\r\n', '\n')
         finally:
             os.unlink(name)
 
@@ -518,16 +509,14 @@ def open_url(url, wait=False, locate=False):
             args = 'explorer /select,"%s"' % _unquote_file(
                 url.replace('"', ''))
         else:
-            args = 'start %s "" "%s"' % (
-                wait and '/WAIT' or '', url.replace('"', ''))
+            args = f"""start {wait and '/WAIT' or ''} "" "{url.replace('"', '')}\""""
         return os.system(args)
     elif CYGWIN:
         if locate:
             url = _unquote_file(url)
-            args = 'cygstart "%s"' % (os.path.dirname(url).replace('"', ''))
+            args = f"""cygstart "{os.path.dirname(url).replace('"', '')}\""""
         else:
-            args = 'cygstart %s "%s"' % (
-                wait and '-w' or '', url.replace('"', ''))
+            args = f"""cygstart {wait and '-w' or ''} "{url.replace('"', '')}\""""
         return os.system(args)
 
     try:
@@ -536,9 +525,7 @@ def open_url(url, wait=False, locate=False):
         else:
             url = _unquote_file(url)
         c = subprocess.Popen(['xdg-open', url])
-        if wait:
-            return c.wait()
-        return 0
+        return c.wait() if wait else 0
     except OSError:
         if url.startswith(('http://', 'https://')) and not locate and not wait:
             import webbrowser
@@ -593,11 +580,7 @@ if WIN:
         #
         # Anyway, Click doesn't claim to do this Right(tm), and using `getwch`
         # is doing the right thing in more situations than with `getch`.
-        if echo:
-            func = msvcrt.getwche
-        else:
-            func = msvcrt.getwch
-
+        func = msvcrt.getwche if echo else msvcrt.getwch
         rv = func()
         if rv in (u'\x00', u'\xe0'):
             # \x00 and \xe0 are control characters that indicate special key,
@@ -617,7 +600,7 @@ else:
         else:
             fd = sys.stdin.fileno()
             f = None
-        try:
+        with contextlib.suppress(termios.error):
             old_settings = termios.tcgetattr(fd)
             try:
                 tty.setraw(fd)
@@ -627,8 +610,6 @@ else:
                 sys.stdout.flush()
                 if f is not None:
                     f.close()
-        except termios.error:
-            pass
 
     def getchar(echo):
         with raw_terminal() as fd:

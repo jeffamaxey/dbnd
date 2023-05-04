@@ -90,7 +90,7 @@ class TaskSubCtrl(object):
         return self.dbnd_context.task_instance_cache.get_task_by_id(task_id)
 
     def __repr__(self):
-        return "%s.%s" % (self.task.task_id, self.__class__.__name__)
+        return f"{self.task.task_id}.{self.__class__.__name__}"
 
 
 @six.add_metaclass(ABCMeta)
@@ -231,11 +231,11 @@ class TrackingTaskCtrl(_BaseTaskCtrl):
 
     @property
     def task_inputs(self):
-        return dict(dict())
+        return dict({})
 
     @property
     def task_outputs(self):
-        return dict(dict())
+        return dict({})
 
     def should_run(self):
         return True

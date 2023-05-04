@@ -40,10 +40,7 @@ class _LRUNode(object):
         self.size = None
 
     def __repr__(self):
-        if self.prev is None:
-            prev_key = None
-        else:
-            prev_key = self.prev.key
+        prev_key = None if self.prev is None else self.prev.key
         return '%s(%r n:%r p:%r)' % (self.__class__.__name__, self.key,
                                      self.next_key, prev_key)
 
@@ -106,11 +103,10 @@ class LRUCache(object):
     def _walk_lru(self):
         """Walk the LRU list, only meant to be used in tests."""
         node = self._most_recently_used
-        if node is not None:
-            if node.prev is not None:
-                raise AssertionError('the _most_recently_used entry is not'
-                                     ' supposed to have a previous entry'
-                                     ' %s' % (node,))
+        if node is not None and node.prev is not None:
+            raise AssertionError(
+                f'the _most_recently_used entry is not supposed to have a previous entry {node}'
+            )
         while node is not None:
             if node.next_key is _null_key:
                 if node is not self._least_recently_used:
@@ -127,10 +123,9 @@ class LRUCache(object):
                     raise AssertionError('only the _most_recently_used should'
                                          ' not have a previous node: %s'
                                          % (node,))
-            else:
-                if node.prev.next_key != node.key:
-                    raise AssertionError('inconsistency found, node.prev.next'
-                                         ' != node: %s' % (node,))
+            elif node.prev.next_key != node.key:
+                raise AssertionError('inconsistency found, node.prev.next'
+                                     ' != node: %s' % (node,))
             yield node
             node = node_next
 
@@ -185,7 +180,7 @@ class LRUCache(object):
 
     def items(self):
         """Get the key:value pairs as a dict."""
-        return dict((k, n.value) for k, n in self._cache.items())
+        return {k: n.value for k, n in self._cache.items()}
 
     def cleanup(self):
         """Clear the cache until it shrinks to the requested size.

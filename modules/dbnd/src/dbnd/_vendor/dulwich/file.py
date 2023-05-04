@@ -121,7 +121,7 @@ class _GitFile(object):
         if isinstance(self._filename, bytes):
             self._lockfilename = self._filename + b'.lock'
         else:
-            self._lockfilename = self._filename + '.lock'
+            self._lockfilename = f'{self._filename}.lock'
         try:
             fd = os.open(
                 self._lockfilename,
@@ -172,13 +172,12 @@ class _GitFile(object):
         try:
             if getattr(os, 'replace', None) is not None:
                 os.replace(self._lockfilename, self._filename)
+            elif sys.platform == 'win32':
+                # Windows versions prior to Vista don't support atomic
+                # renames
+                _fancy_rename(self._lockfilename, self._filename)
             else:
-                if sys.platform != 'win32':
-                    os.rename(self._lockfilename, self._filename)
-                else:
-                    # Windows versions prior to Vista don't support atomic
-                    # renames
-                    _fancy_rename(self._lockfilename, self._filename)
+                os.rename(self._lockfilename, self._filename)
         finally:
             self.abort()
 

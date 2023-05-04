@@ -45,9 +45,7 @@ def is_ascii_encoding(encoding):
 def get_best_encoding(stream):
     """Returns the default stream encoding if not found."""
     rv = getattr(stream, 'encoding', None) or sys.getdefaultencoding()
-    if is_ascii_encoding(rv):
-        return 'utf-8'
-    return rv
+    return 'utf-8' if is_ascii_encoding(rv) else rv
 
 
 class _NonClosingTextIOWrapper(io.TextIOWrapper):
@@ -111,9 +109,7 @@ class _FixupStream(object):
         # We only dispatch to readline instead of read in Python 2 as we
         # do not want cause problems with the different implementation
         # of line buffering.
-        if PY2:
-            return self._stream.readline(size)
-        return self._stream.read(size)
+        return self._stream.readline(size) if PY2 else self._stream.read(size)
 
     def readable(self):
         if self._force_readable:
@@ -337,10 +333,7 @@ else:
 
         # Otherwise, it's only a compatible stream if we did not ask for
         # an encoding.
-        if encoding is None:
-            return stream_encoding is not None
-
-        return False
+        return stream_encoding is not None if encoding is None else False
 
     def _force_correct_text_reader(text_reader, encoding, errors,
                                    force_readable=False):
@@ -457,10 +450,7 @@ def get_streerror(e, default=None):
     if hasattr(e, 'strerror'):
         msg = e.strerror
     else:
-        if default is not None:
-            msg = default
-        else:
-            msg = str(e)
+        msg = default if default is not None else str(e)
     if isinstance(msg, bytes):
         msg = msg.decode('utf-8', 'replace')
     return msg

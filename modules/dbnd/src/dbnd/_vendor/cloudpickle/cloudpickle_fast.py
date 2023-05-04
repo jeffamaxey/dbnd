@@ -123,7 +123,7 @@ def _class_getnewargs(obj):
 
 
 def _enum_getnewargs(obj):
-    members = dict((e.name, e.value) for e in obj)
+    members = {e.name: e.value for e in obj}
     return (obj.__bases__, obj.__name__, obj.__qualname__, members,
             obj.__module__, _get_or_create_tracker_id(obj), None)
 
@@ -198,7 +198,7 @@ def _class_getstate(obj):
         else:
             # In the above if clause, registry is a set of weakrefs -- in
             # this case, registry is a WeakSet
-            clsdict["_abc_impl"] = [type_ for type_ in registry]
+            clsdict["_abc_impl"] = list(registry)
 
     if "__slots__" in clsdict:
         # pickle string length optimization: member descriptors of obj are
@@ -218,7 +218,7 @@ def _class_getstate(obj):
 def _enum_getstate(obj):
     clsdict, slotstate = _class_getstate(obj)
 
-    members = dict((e.name, e.value) for e in obj)
+    members = {e.name: e.value for e in obj}
     # Cleanup the clsdict that will be passed to _rehydrate_skeleton_class:
     # Those attributes are already handled by the metaclass.
     for attrname in ["_generate_next_value_", "_member_names_",
@@ -301,8 +301,7 @@ def _file_reduce(obj):
         )
     if "r" not in obj.mode and "+" not in obj.mode:
         raise pickle.PicklingError(
-            "Cannot pickle files that are not opened for reading: %s"
-            % obj.mode
+            f"Cannot pickle files that are not opened for reading: {obj.mode}"
         )
 
     name = obj.name
@@ -317,7 +316,7 @@ def _file_reduce(obj):
         obj.seek(curloc)
     except IOError as e:
         raise pickle.PicklingError(
-            "Cannot pickle file %s as it cannot be read" % name
+            f"Cannot pickle file {name} as it cannot be read"
         ) from e
     retval.write(contents)
     retval.seek(curloc)
@@ -341,9 +340,8 @@ def _memoryview_reduce(obj):
 def _module_reduce(obj):
     if _is_importable(obj):
         return subimport, (obj.__name__,)
-    else:
-        obj.__dict__.pop('__builtins__', None)
-        return dynamic_subimport, (obj.__name__, vars(obj))
+    obj.__dict__.pop('__builtins__', None)
+    return dynamic_subimport, (obj.__name__, vars(obj))
 
 
 def _method_reduce(obj):
@@ -562,14 +560,13 @@ class CloudPickler(Pickler):
         try:
             return Pickler.dump(self, obj)
         except RuntimeError as e:
-            if "recursion" in e.args[0]:
-                msg = (
-                    "Could not pickle object as excessively deep recursion "
-                    "required."
-                )
-                raise pickle.PicklingError(msg) from e
-            else:
+            if "recursion" not in e.args[0]:
                 raise
+            msg = (
+                "Could not pickle object as excessively deep recursion "
+                "required."
+            )
+            raise pickle.PicklingError(msg) from e
 
     if pickle.HIGHEST_PROTOCOL >= 5:
         # `CloudPickler.dispatch` is only left for backward compatibility - note

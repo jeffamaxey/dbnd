@@ -169,8 +169,7 @@ class TrackingStoreThroughChannel(TrackingStore):
             timestamp=utcnow(),
             dataset_uri=None,
         )
-        res = self.log_datasets(datasets_info=[dataset_info])
-        return res
+        return self.log_datasets(datasets_info=[dataset_info])
 
     def log_datasets(self, datasets_info):  # type: (List[LogDatasetArgs]) -> Any
         return self._m(self.channel.log_datasets, datasets_info=datasets_info)
@@ -265,10 +264,7 @@ class TrackingStoreThroughChannel(TrackingStore):
         """
         req_schema = self.channel.get_schema_by_handler_name(channel_call.__name__)
         marsh = req_schema.dump(req_kwargs)
-        resp = channel_call(marsh.data)
-        # if resp_schema and resp:
-        #     resp = resp_schema.load(resp)
-        return resp
+        return channel_call(marsh.data)
 
     def flush(self):
         self.channel.flush()
@@ -277,7 +273,7 @@ class TrackingStoreThroughChannel(TrackingStore):
         return self.channel.is_ready()
 
     def __str__(self):
-        return "TrackingStoreThroughChannel with channel=%s" % (str(self.channel),)
+        return f"TrackingStoreThroughChannel with channel={str(self.channel)}"
 
     @staticmethod
     def build_with_disabled_channel(databand_ctx):

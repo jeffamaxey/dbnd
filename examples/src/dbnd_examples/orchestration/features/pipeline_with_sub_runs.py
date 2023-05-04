@@ -6,7 +6,7 @@ from dbnd._core.context.databand_context import DatabandContext
 
 @task
 def say_hello(user="sdfsd"):
-    greeting = "Hey, {}!".format(user)
+    greeting = f"Hey, {user}!"
     logging.info(greeting)
     return greeting
 
@@ -20,7 +20,7 @@ def calculate_num_of_greetings(input=2):
 def greetings_pipeline(num_of_greetings):
     results = []
     for i in range(num_of_greetings):
-        v = say_hello(user="user {}".format(i))
+        v = say_hello(user=f"user {i}")
         results.append(v)
     return results
 
@@ -41,10 +41,7 @@ def greetings_pipeline_subrun(num_of_greetings):
 @pipeline
 def say_hello_pipe():
     num_of_greetings = calculate_num_of_greetings()
-    # we can't use num_of_greetigs value here - we are inside pipeline build phase
-    v = greetings_pipeline_subrun(num_of_greetings=num_of_greetings)
-
-    return v
+    return greetings_pipeline_subrun(num_of_greetings=num_of_greetings)
 
 
 if __name__ == "__main__":

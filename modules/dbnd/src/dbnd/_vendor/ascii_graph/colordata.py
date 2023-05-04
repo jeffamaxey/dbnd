@@ -35,13 +35,11 @@ def hcolor(data, thresholds):
         minover = None
         maxt = 0
         for t in thresholds:
-            if maxt < t:
-                maxt = t
+            maxt = max(maxt, t)
             if value > t:
                 newval.append((t, thresholds[t]))
-            else:
-                if minover is None or minover > t:
-                    minover = t
+            elif minover is None or minover > t:
+                minover = t
         if minover is None:
             minover = maxt
 

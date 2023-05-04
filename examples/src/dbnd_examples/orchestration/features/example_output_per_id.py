@@ -24,7 +24,7 @@ def dump_table_from_db(table):
 def filter_by_id(data, partner_id):
     # type: (DataFrame, int) -> DataFrame
     partner_data = data[data["partner"] == partner_id]
-    log_dataframe("partner_%s" % partner_id, partner_data)
+    log_dataframe(f"partner_{partner_id}", partner_data)
     return partner_data
 
 

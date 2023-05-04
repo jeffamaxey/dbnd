@@ -432,13 +432,10 @@ right = [
 
 def get_random_name(sep="_", r=None, seed=None):
     if r is None:
-        if seed:
-            r = random.Random(seed)
-        else:
-            r = random.SystemRandom()
+        r = random.Random(seed) if seed else random.SystemRandom()
+    name = f"{r.choice(left)}{sep}{r.choice(right)}"
     while 1:
-        name = "%s%s%s" % (r.choice(left), sep, r.choice(right))
-        if name == "boring" + sep + "wozniak":  # Steve Wozniak is not boring
+        if name == f"boring{sep}wozniak":  # Steve Wozniak is not boring
             continue
         return name
 

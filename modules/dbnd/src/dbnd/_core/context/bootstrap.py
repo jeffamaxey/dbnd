@@ -61,10 +61,9 @@ def dbnd_system_bootstrap():
         project_config = get_dbnd_project_config()
         if not project_config.quiet_mode:
             logger.info("Starting Databand %s!\n%s", dbnd.__version__, _env_banner())
-            dbnd_run_info_source_version = os.environ.get(
+            if dbnd_run_info_source_version := os.environ.get(
                 "DBND__RUN_INFO__SOURCE_VERSION"
-            )
-            if dbnd_run_info_source_version:
+            ):
                 logger.info("revision: %s", dbnd_run_info_source_version)
         from databand import dbnd_config
 
@@ -118,8 +117,7 @@ def dbnd_bootstrap():
     from dbnd._core.plugin.dbnd_plugins import pm
     from dbnd._core.utils.basics.load_python_module import run_user_func
 
-    user_plugins = config.get("core", "plugins", None)
-    if user_plugins:
+    if user_plugins := config.get("core", "plugins", None):
         register_dbnd_user_plugins(user_plugins.split(","))
 
     if is_unit_test_mode():
@@ -134,9 +132,7 @@ def dbnd_bootstrap():
 
         register_sigquit_stack_dump_handler()
 
-    # now we can run user code ( at driver/task)
-    user_preinit = environ_config.get_user_preinit()
-    if user_preinit:
+    if user_preinit := environ_config.get_user_preinit():
         run_user_func(user_preinit)
 
     # if for any reason there will be code that calls dbnd_bootstrap, this will prevent endless recursion

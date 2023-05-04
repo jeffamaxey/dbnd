@@ -25,8 +25,7 @@ class FieldABC(object):
         raise NotImplementedError
 
     def __deepcopy__(self, memo):
-        ret = copy.copy(self)
-        return ret
+        return copy.copy(self)
 
 
 class SchemaABC(object):

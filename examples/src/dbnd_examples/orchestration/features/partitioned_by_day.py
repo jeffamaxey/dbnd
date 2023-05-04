@@ -58,7 +58,7 @@ class FetchData(PythonTask):
 
     def run(self):
         values = ["a", "b", "c"]
-        self.data = ["data-%s-%s" % (s, self.task_target_date) for s in values]
+        self.data = [f"data-{s}-{self.task_target_date}" for s in values]
 
 
 class IdsAndData(dbnd.PipelineTask):
@@ -71,7 +71,7 @@ class IdsAndData(dbnd.PipelineTask):
 
     def band(self):
         all_ids, all_data = {}, {}
-        for i, d in enumerate(period_dates(self.task_target_date, self.period)):
+        for d in period_dates(self.task_target_date, self.period):
             # if self.task_env == TaskEnv.prod and not self.run_on_prod:
             #     ids = cb_data_dump_path(task_target_date=d, name="ids")
             #     data = cb_data_dump_path(task_target_date=d, name="data")
@@ -105,7 +105,7 @@ class Features(PythonTask):
             logger.info("Working on %s, %s", ids, data)
             # we put features one by one with ids
             partition = [
-                "%s -> %s" % (k, v)
+                f"{k} -> {v}"
                 for k, v in zip(
                     ids.load(value_type=List[str]), data.load(value_type=List)
                 )

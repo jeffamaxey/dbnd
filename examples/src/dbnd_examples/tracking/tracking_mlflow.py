@@ -25,7 +25,7 @@ logger = logging.getLogger(__name__)
 def task_with_mflow(check_time=datetime.datetime.now()):
     # type: ( datetime.datetime)-> str
     logger.info("Running MLFlow tracking integration check!")
-    logger.info("MLFlow tracking URI: {}".format(get_tracking_uri()))
+    logger.info(f"MLFlow tracking URI: {get_tracking_uri()}")
 
     start_run()
 
@@ -51,7 +51,7 @@ def task_with_mflow(check_time=datetime.datetime.now()):
     service = MlflowClient()
     run_id = active_run().info.run_id
     run = service.get_run(run_id)
-    logger.info("Metadata & data for run with UUID %s: %s" % (run_id, run))
+    logger.info(f"Metadata & data for run with UUID {run_id}: {run}")
 
     end_run()
 

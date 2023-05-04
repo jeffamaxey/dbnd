@@ -80,7 +80,7 @@ def _class_getnewargs(obj):
 
 
 def _enum_getnewargs(obj):
-    members = dict((e.name, e.value) for e in obj)
+    members = {e.name: e.value for e in obj}
     return (obj.__bases__, obj.__name__, obj.__qualname__, members,
             obj.__module__, _ensure_tracking(obj), None)
 
@@ -161,7 +161,7 @@ def _class_getstate(obj):
 def _enum_getstate(obj):
     clsdict, slotstate = _class_getstate(obj)
 
-    members = dict((e.name, e.value) for e in obj)
+    members = {e.name: e.value for e in obj}
     # Cleanup the clsdict that will be passed to _rehydrate_skeleton_class:
     # Those attributes are already handled by the metaclass.
     for attrname in ["_generate_next_value_", "_member_names_",
@@ -235,8 +235,7 @@ def _file_reduce(obj):
         )
     if "r" not in obj.mode and "+" not in obj.mode:
         raise pickle.PicklingError(
-            "Cannot pickle files that are not opened for reading: %s"
-            % obj.mode
+            f"Cannot pickle files that are not opened for reading: {obj.mode}"
         )
 
     name = obj.name
@@ -250,9 +249,7 @@ def _file_reduce(obj):
         contents = obj.read()
         obj.seek(curloc)
     except IOError:
-        raise pickle.PicklingError(
-            "Cannot pickle file %s as it cannot be read" % name
-        )
+        raise pickle.PicklingError(f"Cannot pickle file {name} as it cannot be read")
     retval.write(contents)
     retval.seek(curloc)
 
@@ -537,11 +534,10 @@ class CloudPickler(Pickler):
         try:
             return Pickler.dump(self, obj)
         except RuntimeError as e:
-            if "recursion" in e.args[0]:
-                msg = (
-                    "Could not pickle object as excessively deep recursion "
-                    "required."
-                )
-                raise pickle.PicklingError(msg)
-            else:
+            if "recursion" not in e.args[0]:
                 raise
+            msg = (
+                "Could not pickle object as excessively deep recursion "
+                "required."
+            )
+            raise pickle.PicklingError(msg)

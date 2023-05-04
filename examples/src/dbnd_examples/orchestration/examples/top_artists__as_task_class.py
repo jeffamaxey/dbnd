@@ -20,7 +20,7 @@ class ExternalStream(DataSourceTask):
 
     def band(self):
         self.stream = target(
-            self.root_location, "%s.txt" % self.task_target_date.strftime("%Y-%m-%d")
+            self.root_location, f'{self.task_target_date.strftime("%Y-%m-%d")}.txt'
         )
 
 
@@ -30,9 +30,7 @@ class Stream(PythonTask):
 
     def run(self):
         lines = [
-            "{} {} {}".format(
-                random.randint(0, 999), random.randint(0, 999), random.randint(0, 999)
-            )
+            f"{random.randint(0, 999)} {random.randint(0, 999)} {random.randint(0, 999)}"
             for _ in range(1000)
         ]
         self.stream.write("\n".join(lines))
@@ -50,7 +48,7 @@ class ArtistAggregator(PythonTask):
                 _, artist, track = l.strip().split()
                 artist_count[artist] += 1
         for artist, count in six.iteritems(artist_count):
-            self.index.write("{}\t{}\n".format(artist, count))
+            self.index.write(f"{artist}\t{count}\n")
 
 
 class TopNArtists(PythonTask):
@@ -61,7 +59,7 @@ class TopNArtists(PythonTask):
 
     def run(self):
         top_n = nlargest(self.n_largest, self._input_iterator())
-        values = ["{}\t{}".format(streams, artist) for streams, artist in top_n]
+        values = [f"{streams}\t{artist}" for streams, artist in top_n]
         self.output.write("\n".join(values))
 
     def _input_iterator(self):
@@ -75,9 +73,8 @@ class AggregateTopArtists(PipelineTask):
 
     def band(self):
         streams = [
-            Stream(task_name="Stream_%s" % i, task_target_date=d).stream
+            Stream(task_name=f"Stream_{i}", task_target_date=d).stream
             for i, d in enumerate(period_dates(self.task_target_date, self.period))
         ]
         artists = ArtistAggregator(streams=streams)
-        top_n = TopNArtists(artists=artists.index)
-        return top_n
+        return TopNArtists(artists=artists.index)

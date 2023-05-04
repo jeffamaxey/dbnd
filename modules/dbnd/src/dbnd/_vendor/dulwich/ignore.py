@@ -34,7 +34,7 @@ def _translate_segment(segment):
     i, n = 0, len(segment)
     while i < n:
         c = segment[i:i+1]
-        i = i+1
+        i += 1
         if c == b'*':
             res += b'[^/]*'
         elif c == b'?':
@@ -42,11 +42,11 @@ def _translate_segment(segment):
         elif c == b'[':
             j = i
             if j < n and segment[j:j+1] == b'!':
-                j = j+1
+                j += 1
             if j < n and segment[j:j+1] == b']':
-                j = j+1
+                j += 1
             while j < n and segment[j:j+1] != b']':
-                j = j+1
+                j += 1
             if j >= n:
                 res += b'\\['
             else:
@@ -120,9 +120,7 @@ def read_ignore_patterns(f):
         # Trailing spaces are ignored unless they are quoted with a backslash.
         while line.endswith(b' ') and not line.endswith(b'\\ '):
             line = line[:-1]
-        line = line.replace(b'\\ ', b' ')
-
-        yield line
+        yield line.replace(b'\\ ', b' ')
 
 
 def match_pattern(path, pattern, ignorecase=False):
@@ -142,16 +140,14 @@ class Pattern(object):
     def __init__(self, pattern, ignorecase=False):
         self.pattern = pattern
         self.ignorecase = ignorecase
-        if pattern[0:1] == b'!':
+        if pattern[:1] == b'!':
             self.is_exclude = False
             pattern = pattern[1:]
         else:
-            if pattern[0:1] == b'\\':
+            if pattern[:1] == b'\\':
                 pattern = pattern[1:]
             self.is_exclude = True
-        flags = 0
-        if self.ignorecase:
-            flags = re.IGNORECASE
+        flags = re.IGNORECASE if self.ignorecase else 0
         self._re = re.compile(translate(pattern), flags)
 
     def __bytes__(self):
@@ -224,7 +220,7 @@ class IgnoreFilter(object):
 
     def __repr__(self):
         if getattr(self, '_path', None) is None:
-            return "<%s>" % (type(self).__name__)
+            return f"<{type(self).__name__}>"
         else:
             return "%s.from_path(%r)" % (type(self).__name__, self._path)
 
@@ -305,7 +301,7 @@ class IgnoreFilterManager(object):
         :return: Iterator over Pattern instances
         """
         if os.path.isabs(path):
-            raise ValueError('%s is an absolute path' % path)
+            raise ValueError(f'{path} is an absolute path')
         filters = [(0, f) for f in self._global_filters]
         if os.path.sep != '/':
             path = path.replace(os.path.sep, '/')
@@ -318,8 +314,7 @@ class IgnoreFilterManager(object):
                     # Paths leading up to the final part are all directories,
                     # so need a trailing slash.
                     relpath += '/'
-                matches = list(f.find_matching(relpath))
-                if matches:
+                if matches := list(f.find_matching(relpath)):
                     return iter(matches)
             ignore_filter = self._load_path(dirname)
             if ignore_filter is not None:
@@ -333,8 +328,7 @@ class IgnoreFilterManager(object):
         :return: None if the file is not mentioned, True if it is included,
             False if it is explicitly excluded.
         """
-        matches = list(self.find_matching(path))
-        if matches:
+        if matches := list(self.find_matching(path)):
             return matches[-1].is_exclude
         return None
 

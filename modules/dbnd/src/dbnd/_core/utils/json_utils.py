@@ -81,7 +81,7 @@ def json_default(obj, safe=False):
     if safe:
         return str(obj)
 
-    raise TypeError(repr(obj) + " is not JSON serializable")
+    raise TypeError(f"{repr(obj)} is not JSON serializable")
 
 
 def dumps(obj, default=json_default, sort_keys=True, **kwargs):

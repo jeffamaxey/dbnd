@@ -2,9 +2,9 @@ def generate_airflow_cmd(dag_id, task_id, execution_date, is_root_task=False):
     return "airflow {sub_command} {dag_id}{task_id} {start_date} {end_date}".format(
         sub_command="backfill" if is_root_task else "test",
         dag_id=dag_id,
-        task_id=" %s" % task_id if not is_root_task else "",
-        start_date="-s %s" % execution_date,
-        end_date="-e %s" % execution_date,
+        task_id="" if is_root_task else f" {task_id}",
+        start_date=f"-s {execution_date}",
+        end_date=f"-e {execution_date}",
     )
 
 

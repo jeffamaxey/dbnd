@@ -210,8 +210,7 @@ class RunExecutor(object):
             logger.exception(ex)
 
         if (
-            isinstance(ex, KeyboardInterrupt)
-            or isinstance(ex, DatabandSigTermError)
+            isinstance(ex, (KeyboardInterrupt, DatabandSigTermError))
             or self.is_killed()
         ):
             run_state = RunState.CANCELLED
@@ -240,7 +239,7 @@ class RunExecutor(object):
             )
         )
         return DatabandRunError(
-            "Run has failed: %s" % ex, run=self.run, nested_exceptions=ex
+            f"Run has failed: {ex}", run=self.run, nested_exceptions=ex
         )
 
     def save_run_pickle(self, target_file=None):
@@ -308,11 +307,10 @@ class RunExecutor(object):
 
             tc = TaskContext.try_instance()
             if tc.phase == TaskContextPhase.RUN:
-                current_list = list(tc.stack)
-                if current_list:
+                if current_list := list(tc.stack):
                     current_task = current_list.pop()
         except Exception as ex:
-            logger.warning("Failed to find current task: %s" % ex)
+            logger.warning(f"Failed to find current task: {ex}")
             return
 
         if not current_task:
@@ -322,7 +320,7 @@ class RunExecutor(object):
         try:
             current_task.on_kill()
         except Exception as ex:
-            logger.warning("Failed to kill current task %s: %s" % (current_task, ex))
+            logger.warning(f"Failed to kill current task {current_task}: {ex}")
             return
 
     def kill_run(self, message=None):
@@ -338,8 +336,7 @@ class RunExecutor(object):
             task_run_error = TaskRunError.build_from_message(
                 task_run=tr,
                 msg=message or DEFAULT_TASK_CANCELED_ERR_MSG,
-                help_msg="task with task_run_uid:%s initiated kill_run"
-                % (tr.task_run_uid),
+                help_msg=f"task with task_run_uid:{tr.task_run_uid} initiated kill_run",
                 ex_class=DbndCanceledRunError,
             )
             tr.set_task_run_state(TaskRunState.FAILED, track=True, error=task_run_error)
@@ -437,7 +434,7 @@ class RunExecutor(object):
         task_runs = self._init_task_runs_for_execution(task_engine=remote_engine)
         root_task_run = run.root_task_run
         run.root_task.ctrl.banner(
-            "Main task '%s' has been created!" % root_task_run.task_af_id,
+            f"Main task '{root_task_run.task_af_id}' has been created!",
             color="cyan",
             task_run=root_task_run,
         )
@@ -463,11 +460,7 @@ class RunExecutor(object):
             task_runs=task_runs_to_run,
         )
 
-        hearbeat = None
-        if self.send_heartbeat:
-            # this will wrap the executor with "heartbeat" process
-            hearbeat = start_heartbeat_sender(self)
-
+        hearbeat = start_heartbeat_sender(self) if self.send_heartbeat else None
         with nested(hearbeat):
             task_executor.do_run()
 
@@ -496,10 +489,10 @@ class RunExecutor(object):
         root_task = self.run.root_task_run.task
         msg = "Your run has been successfully executed!"
         if self.run.duration:
-            msg = "Your run has been successfully executed in %s" % self.run.duration
+            msg = f"Your run has been successfully executed in {self.run.duration}"
         run_msg = "\n%s\n%s\n" % (
             root_task.ctrl.banner(
-                "Main task '%s' is ready!" % root_task.task_name,
+                f"Main task '{root_task.task_name}' is ready!",
                 color="green",
                 task_run=self.run.root_task_run,
             ),
@@ -526,7 +519,7 @@ class RunExecutor(object):
         # let prepare for remote execution
         remote_engine.prepare_for_run(run)
 
-        result_map_target = run.run_root.file("{}.json".format(get_uuid()))
+        result_map_target = run.run_root.file(f"{get_uuid()}.json")
         cmd_line_args = (
             ["run"]
             + _get_dbnd_run_relative_cmd()
@@ -534,11 +527,9 @@ class RunExecutor(object):
                 "--run-driver",
                 str(run.run_uid),
                 "--set",
-                "run.run_result_json_path={}".format(result_map_target.path),
+                f"run.run_result_json_path={result_map_target.path}",
                 "--set",
-                "run.execution_date={}".format(
-                    run.execution_date.strftime("%Y-%m-%dT%H%M%S.%f")
-                ),
+                f'run.execution_date={run.execution_date.strftime("%Y-%m-%dT%H%M%S.%f")}',
             ]
         )
 
@@ -629,11 +620,11 @@ class _RunExecutor_Task(Task):
                 return run_executor.run_submitter()
             else:
                 raise DatabandSystemError(
-                    "Unsupported run executor type: %s" % run_executor_type
+                    f"Unsupported run executor type: {run_executor_type}"
                 )
         except BaseException as ex:
             # we print it on any exception
-            logger.warning("Run failure: %s" % ex)
+            logger.warning(f"Run failure: {ex}")
             logger.warning(
                 "\n\n\n\n{sep}\n\n   -= Your run has failed, please review errors below =-\n\n{sep}\n".format(
                     sep=console_utils.error_separator()

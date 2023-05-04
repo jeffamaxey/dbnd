@@ -95,9 +95,9 @@ def _average_gradients(model):
 
 def train(args):
     is_distributed = len(args.hosts) > 1 and args.backend is not None
-    logger.debug("Distributed training - {}".format(is_distributed))
+    logger.debug(f"Distributed training - {is_distributed}")
     use_cuda = args.num_gpus > 0
-    logger.debug("Number of gpus available - {}".format(args.num_gpus))
+    logger.debug(f"Number of gpus available - {args.num_gpus}")
     kwargs = {"num_workers": 1, "pin_memory": True} if use_cuda else {}
     device = torch.device("cuda" if use_cuda else "cpu")
 
@@ -111,11 +111,9 @@ def train(args):
             backend=args.backend, rank=host_rank, world_size=world_size
         )
         logger.info(
-            "Initialized the distributed environment: '{}' backend on {} nodes. ".format(
-                args.backend, dist.get_world_size()
-            )
-            + "Current host rank is {}. Number of gpus: {}".format(
-                dist.get_rank(), args.num_gpus
+            (
+                f"Initialized the distributed environment: '{args.backend}' backend on {dist.get_world_size()} nodes. "
+                + f"Current host rank is {dist.get_rank()}. Number of gpus: {args.num_gpus}"
             )
         )
 

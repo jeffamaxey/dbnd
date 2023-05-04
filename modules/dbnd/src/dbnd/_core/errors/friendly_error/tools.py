@@ -21,7 +21,7 @@ def logger_format_for_databand_error(error):
     title_exception = red(underline(bold("Nested exception: ")))
     title_helper = cyan(underline(bold("Help: ")))
 
-    full_err_message = "\n\n {title_error}{msg_error} \n {title_exception}{msg_exception} \n {title_helper}\n{msg_helper}\n\n".format(
+    return "\n\n {title_error}{msg_error} \n {title_exception}{msg_exception} \n {title_helper}\n{msg_helper}\n\n".format(
         title_error=title_error,
         msg_error=error,
         title_exception=title_exception,
@@ -29,4 +29,3 @@ def logger_format_for_databand_error(error):
         title_helper=title_helper,
         msg_helper=getattr(error, "help_msg", ""),
     )
-    return full_err_message

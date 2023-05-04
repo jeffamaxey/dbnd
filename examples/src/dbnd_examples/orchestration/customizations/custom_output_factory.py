@@ -18,11 +18,10 @@ def _custom_outputs_factory(
     result = {}
     target = task_output.build_target(task)
     for i in range(task.parts):
-        name = "part_%s" % i
-        result[name] = (
-            target.partition(name="train_%s" % name),
-            target.partition(name="test_%s" % name),
-        )
+        name = f"part_{i}"
+        result[name] = target.partition(
+            name=f"train_{name}"
+        ), target.partition(name=f"test_{name}")
 
     return result
 
@@ -39,11 +38,11 @@ class DataSplitIntoMultipleOutputs(PythonTask):
 
 
 def _get_all_splits(task, task_output):  # type: (Task, Any) -> Dict[str,Target]
-    result = {}
     target = task_output.build_target(task)
-    for i in range(task.splits_count):
-        result[str(i)] = target.partition(name="split_%s" % i)
-    return result
+    return {
+        str(i): target.partition(name=f"split_{i}")
+        for i in range(task.splits_count)
+    }
 
 
 class DataSplit(PythonTask):
@@ -53,7 +52,7 @@ class DataSplit(PythonTask):
     def run(self):
         for key, split in six.iteritems(self.splits):
             logging.info("writing split")
-            split.write("split_%s" % key)
+            split.write(f"split_{key}")
 
 
 # we can implement using classes

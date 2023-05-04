@@ -80,7 +80,7 @@ class FileTrackingStore(TrackingStore):
     def log_histograms(self, task_run, key, value_meta, timestamp):
         # type: (TaskRun, str, ValueMeta, datetime) -> None
         metric_path = task_run.meta_files.get_metric_target(
-            "{}.json".format(key), source=MetricSource.histograms
+            f"{key}.json", source=MetricSource.histograms
         )
         data_schema = value_meta.data_schema.as_dict() if value_meta.data_schema else {}
         data = json.dumps(
@@ -104,7 +104,7 @@ class FileTrackingStore(TrackingStore):
                 metric.key, source=metric.source
             )
             timestamp = int(time.mktime(metric.timestamp.timetuple()))
-            value = "{} {}\n".format(timestamp, metric.serialized_value)
+            value = f"{timestamp} {metric.serialized_value}\n"
 
             data = value
             if metric_path.exists():
@@ -134,8 +134,7 @@ class FileTrackingStore(TrackingStore):
             return artifact_target
 
         raise DatabandRuntimeError(
-            "Could not recognize artifact of type %s, must be string or matplotlib Figure"
-            % type(artifact)
+            f"Could not recognize artifact of type {type(artifact)}, must be string or matplotlib Figure"
         )
 
     def is_ready(self):
@@ -155,7 +154,7 @@ class TaskRunMetricsFileStoreReader(object):
     def get_metric_history(self, key, source=None):
         metric_target = self.meta.get_metric_target(key, source=source)
         if not metric_target.exists():
-            raise DatabandError("Metric '%s' not found" % key)
+            raise DatabandError(f"Metric '{key}' not found")
         metric_data = metric_target.readlines()
         rsl = []
         for pair in metric_data:
@@ -170,7 +169,7 @@ class TaskRunMetricsFileStoreReader(object):
                 metrics.extend(self.get_metrics(key, source=source))
             except Exception as ex:
                 raise DatabandError(
-                    "Failed to read metrics for %s at %s" % (key, self.meta.root),
+                    f"Failed to read metrics for {key} at {self.meta.root}",
                     nested_exceptions=ex,
                 )
         return {m.key: m.value for m in metrics}
@@ -186,17 +185,16 @@ class TaskRunMetricsFileStoreReader(object):
 
         metric_target = self.meta.get_metric_target(key, source=source)
         if not metric_target.exists():
-            raise DatabandRuntimeError("Metric '%s' not found" % key)
+            raise DatabandRuntimeError(f"Metric '{key}' not found")
         metric_data = metric_target.readlines()
         if len(metric_data) == 0:
-            raise DatabandRuntimeError("Metric '%s' is malformed. No data found." % key)
+            raise DatabandRuntimeError(f"Metric '{key}' is malformed. No data found.")
         first_line = metric_data[0]
 
         metric_parsed = _METRICS_RE.match(first_line)
         if not metric_parsed:
             raise DatabandRuntimeError(
-                "Metric '%s' is malformed. Expected format: 'TS VALUE', got='%s'"
-                % (key, first_line)
+                f"Metric '{key}' is malformed. Expected format: 'TS VALUE', got='{first_line}'"
             )
 
         timestamp, val = metric_parsed.groups()
@@ -211,7 +209,7 @@ class TaskRunMetricsFileStoreReader(object):
     def get_histogram_metrics(self, key):
         # type: (str) -> Iterable[Metric]
         metric_target = self.meta.get_metric_target(
-            "{}.json".format(key), source=MetricSource.histograms
+            f"{key}.json", source=MetricSource.histograms
         )
         hist_metrics = json.load(metric_target)
         timestamp = hist_metrics["timestamp"]
@@ -219,14 +217,14 @@ class TaskRunMetricsFileStoreReader(object):
         for name, value in metrics.items():
             if not isinstance(value, (dict, list)):
                 yield Metric(
-                    key="{}.{}".format(key, name),
+                    key=f"{key}.{name}",
                     value=value,
                     timestamp=datetime.fromtimestamp(timestamp),
                 )
                 continue
 
             yield Metric(
-                key="{}.{}".format(key, name),
+                key=f"{key}.{name}",
                 value_json=value,
                 timestamp=datetime.fromtimestamp(timestamp),
             )
@@ -234,14 +232,14 @@ class TaskRunMetricsFileStoreReader(object):
                 for column, stats in value.items():
                     for stat, val in stats.items():
                         yield Metric(
-                            key="{}.{}.{}".format(key, column, stat),
+                            key=f"{key}.{column}.{stat}",
                             value=val,
                             timestamp=datetime.fromtimestamp(timestamp),
                         )
             elif name == "shape":
                 for dim, val in enumerate(value):
                     yield Metric(
-                        key="{}.shape{}".format(key, dim),
+                        key=f"{key}.shape{dim}",
                         value=val,
                         timestamp=datetime.fromtimestamp(timestamp),
                     )
@@ -249,7 +247,7 @@ class TaskRunMetricsFileStoreReader(object):
     def get_artifact(self, name):
         artifact_target = self.meta.get_artifact_target(name)
         if not artifact_target.exists():
-            raise DatabandError("Artifact '%s' not found" % name)
+            raise DatabandError(f"Artifact '{name}' not found")
         return Artifact(artifact_target.path)
 
 

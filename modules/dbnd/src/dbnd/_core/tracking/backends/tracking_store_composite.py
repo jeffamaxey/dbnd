@@ -64,10 +64,7 @@ def try_run_handler(tries, store, handler_name, kwargs):
 
 
 def build_store_name(name, channel_name):
-    if channel_name:
-        return "{}-{}".format(name, channel_name)
-
-    return name
+    return f"{name}-{channel_name}" if channel_name else name
 
 
 class CompositeTrackingStore(TrackingStore):
@@ -137,12 +134,11 @@ class CompositeTrackingStore(TrackingStore):
 
     # this is a function that used for disabling Tracking api on spark inline tasks.
     def disable_tracking_api(self):
-        filtered_stores = []
-
-        for store in self._stores:
-            if isinstance(store, TrackingStoreThroughChannel):
-                continue
-            filtered_stores.append(store)
+        filtered_stores = [
+            store
+            for store in self._stores
+            if not isinstance(store, TrackingStoreThroughChannel)
+        ]
         self._stores = filtered_stores
 
     def has_tracking_store(self, name, channel_name=None):

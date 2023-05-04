@@ -22,8 +22,9 @@ class S3SyncHook(S3Hook):
             (bucket_name, wildcard_key) = self.parse_s3_url(wildcard_key)
 
         prefix = re.split(r"[*]", wildcard_key, 1)[0]
-        klist = self.list_keys(bucket_name, prefix=prefix, delimiter=delimiter)
-        if klist:
+        if klist := self.list_keys(
+            bucket_name, prefix=prefix, delimiter=delimiter
+        ):
             return [k for k in klist if fnmatch.fnmatch(k, wildcard_key)]
         return []
 
@@ -48,7 +49,7 @@ class S3SyncHook(S3Hook):
 
         diff = list(set(source_state) - set(destination_state))
 
-        return ["s3://" + source_bucket + "/" + key for key in diff]
+        return [f"s3://{source_bucket}/{key}" for key in diff]
 
 
 class S3StatefulSensor(BaseSensorOperator):
@@ -77,7 +78,4 @@ class S3StatefulSensor(BaseSensorOperator):
             )
         )
 
-        diff = hook.diff(self.source, self.destination)
-        if diff:
-            return True
-        return False
+        return bool(diff := hook.diff(self.source, self.destination))

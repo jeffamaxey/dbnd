@@ -30,7 +30,7 @@ class CroniterTest(timerTest):
         base.day == n1.day
         base.hour == n1.hour
         base.minute == n1.minute - 1
-        for i in range(39):  # ~ 58
+        for _ in range(39):
             itr.get_next()
 
         n2 = itr.get_next(datetime)
@@ -44,7 +44,7 @@ class CroniterTest(timerTest):
         itr = croniter('*/5 * * * *', base)
         n4 = itr.get_next(datetime)
         n4.minute == 20
-        for i in range(6):
+        for _ in range(6):
             itr.get_next()
         n5 = itr.get_next(datetime)
         n5.minute == 55
@@ -61,7 +61,7 @@ class CroniterTest(timerTest):
         n1.hour == 15
         n1.minute == 0
 
-        for i in range(2):
+        for _ in range(2):
             itr.get_next()
 
         n2 = itr.get_next(datetime)
@@ -136,7 +136,7 @@ class CroniterTest(timerTest):
         n2.month == 3
         n2.day == 1
 
-        for i in range(8):
+        for _ in range(8):
             itr.get_next()
 
         n3 = itr.get_next(datetime)
@@ -164,7 +164,7 @@ class CroniterTest(timerTest):
         base.month == prev.month
         base.day == prev.day
         base.hour == prev.hour + 1
-        59 == prev.minute
+        prev.minute == 59
 
         base = datetime(2010, 8, 25, 0, 0)
         itr = croniter('*/1 * * * *', base)
@@ -172,8 +172,8 @@ class CroniterTest(timerTest):
         base.year == prev.year
         base.month == prev.month
         base.day == prev.day + 1
-        23 == prev.hour
-        59 == prev.minute
+        prev.hour == 23
+        prev.minute == 59
 
     def testPrevWeekDay(self):
         base = datetime(2010, 8, 25, 15, 56)

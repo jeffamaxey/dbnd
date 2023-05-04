@@ -72,10 +72,10 @@ def monitor_redshift(**op_kwarg):
     log_metric("Cluster table count", num_redshift_tables)
 
     table_row_counts = hook.get_records(COUNT_TABLE_ROWS, parameters=[REDSHIFT_SCHEMA])
-    num_rows_per_table = {}
-    for tablename, row_count in table_row_counts:
-        num_rows_per_table[tablename] = int(round(row_count))
-
+    num_rows_per_table = {
+        tablename: int(round(row_count))
+        for tablename, row_count in table_row_counts
+    }
     row_counts = list(num_rows_per_table.values())
     log_metric("Max table row count", max(row_counts))
     log_metric("Min table row count", min(row_counts))
@@ -91,7 +91,7 @@ def monitor_redshift(**op_kwarg):
     )
 
     for _, row in table_shapes.iterrows():
-        log_metric("{} shape".format(row["tablename"]), (row["columns"], row["rows"]))
+        log_metric(f'{row["tablename"]} shape', (row["columns"], row["rows"]))
 
     log_metric("Max table column count", table_shapes["columns"].max())
     log_metric("Min table column count", table_shapes["columns"].max())
@@ -116,11 +116,7 @@ def monitor_redshift(**op_kwarg):
     log_metric("Percent Disk usage", round((disk_used / disk_capacity) * 100, 2))
 
 
-with DAG(
-    dag_id="dbnd_{}_monitor".format(REDSHIFT_CLUSTER_NAME),
-    schedule_interval="{}".format(REDSHIFT_CLUSTER_MONITOR_SCHEDULE),
-    default_args=DEFAULT_ARGS,
-) as dbnd_template_dag:
+with DAG(dag_id=f"dbnd_{REDSHIFT_CLUSTER_NAME}_monitor", schedule_interval=f"{REDSHIFT_CLUSTER_MONITOR_SCHEDULE}", default_args=DEFAULT_ARGS) as dbnd_template_dag:
 
     redshift_monitor = PythonOperator(
         task_id="monitor_redshift_cluster", python_callable=monitor_redshift

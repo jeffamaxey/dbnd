@@ -49,9 +49,7 @@ def parse_tree(repo, treeish):
     """
     treeish = to_bytes(treeish)
     o = repo[treeish]
-    if o.type_name == b"commit":
-        return repo[o.tree]
-    return o
+    return repo[o.tree] if o.type_name == b"commit" else o
 
 
 def parse_ref(container, refspec):
@@ -97,10 +95,7 @@ def parse_reftuple(lh_container, rh_container, refspec):
         (lh, rh) = refspec.split(b":")
     else:
         lh = rh = refspec
-    if lh == b"":
-        lh = None
-    else:
-        lh = parse_ref(lh_container, lh)
+    lh = None if lh == b"" else parse_ref(lh_container, lh)
     if rh == b"":
         rh = None
     else:
@@ -124,11 +119,10 @@ def parse_reftuples(lh_container, rh_container, refspecs):
     """
     if not isinstance(refspecs, list):
         refspecs = [refspecs]
-    ret = []
-    # TODO: Support * in refspecs
-    for refspec in refspecs:
-        ret.append(parse_reftuple(lh_container, rh_container, refspec))
-    return ret
+    return [
+        parse_reftuple(lh_container, rh_container, refspec)
+        for refspec in refspecs
+    ]
 
 
 def parse_refs(container, refspecs):
@@ -142,10 +136,7 @@ def parse_refs(container, refspecs):
     # TODO: Support * in refspecs
     if not isinstance(refspecs, list):
         refspecs = [refspecs]
-    ret = []
-    for refspec in refspecs:
-        ret.append(parse_ref(container, refspec))
-    return ret
+    return [parse_ref(container, refspec) for refspec in refspecs]
 
 
 def parse_commit_range(repo, committishs):

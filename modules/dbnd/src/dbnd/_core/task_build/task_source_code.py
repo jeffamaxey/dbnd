@@ -16,10 +16,7 @@ def _hide_or_show_by_config(source):
     from dbnd._core.settings import TrackingConfig
 
     tracking_config = TrackingConfig.from_databand_context()
-    if tracking_config.track_source_code:
-        return source
-    else:
-        return None
+    return source if tracking_config.track_source_code else None
 
 
 @attr.s
@@ -94,10 +91,9 @@ class TaskSourceCode(object):
     @classmethod
     def from_callstack(cls):
         try:
-            user_frame = UserCodeDetector.build_code_detector().find_user_side_frame(
+            if user_frame := UserCodeDetector.build_code_detector().find_user_side_frame(
                 user_side_only=True
-            )
-            if user_frame:
+            ):
                 module_code = open(user_frame.filename).read()
                 return TaskSourceCode(
                     task_module_code=module_code, task_source_file=user_frame.filename
@@ -136,5 +132,5 @@ def _get_source_file(item):
     try:
         return inspect.getfile(item).replace(".pyc", ".py")
     except Exception:
-        logger.warning("Failed find a path of source code for task {}".format(item))
+        logger.warning(f"Failed find a path of source code for task {item}")
     return None

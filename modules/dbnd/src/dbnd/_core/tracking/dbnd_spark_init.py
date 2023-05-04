@@ -116,8 +116,7 @@ def try_get_airflow_context_from_spark_conf():
 def get_value_from_spark_env(key):
     try:
         conf = _safe_get_spark_conf()
-        value = conf.get("spark.env." + key)
-        if value:
+        if value := conf.get(f"spark.env.{key}"):
             return value
     except:
         return None
@@ -157,25 +156,26 @@ def set_current_jvm_context(run_uid, task_run_uid, task_run_attempt_uid, task_af
 
 # Logging
 def attach_spark_logger(spark_log_file):
-    if environ_enabled("DBND__LOG_SPARK"):
-        try:
-            log4j, spark_logger = try_get_spark_logger()
-            if log4j is None:
-                return
+    if not environ_enabled("DBND__LOG_SPARK"):
+        return
+    try:
+        log4j, spark_logger = try_get_spark_logger()
+        if log4j is None:
+            return
 
-            pattern = "[%d] {%c,%C{1}} %p - %m%n"
-            file_appender = log4j.FileAppender()
+        file_appender = log4j.FileAppender()
 
-            file_appender.setFile(spark_log_file.path)
-            file_appender.setName(spark_log_file.path)
-            file_appender.setLayout(log4j.PatternLayout(pattern))
-            file_appender.setThreshold(log4j.Priority.toPriority("INFO"))
-            file_appender.activateOptions()
-            spark_logger.addAppender(file_appender)
-        except Exception as task_ex:
-            logger.warning(
-                "Failed to attach spark logger for log %s: %s", spark_log_file, task_ex
-            )
+        file_appender.setFile(spark_log_file.path)
+        file_appender.setName(spark_log_file.path)
+        pattern = "[%d] {%c,%C{1}} %p - %m%n"
+        file_appender.setLayout(log4j.PatternLayout(pattern))
+        file_appender.setThreshold(log4j.Priority.toPriority("INFO"))
+        file_appender.activateOptions()
+        spark_logger.addAppender(file_appender)
+    except Exception as task_ex:
+        logger.warning(
+            "Failed to attach spark logger for log %s: %s", spark_log_file, task_ex
+        )
 
 
 def detach_spark_logger(spark_log_file):

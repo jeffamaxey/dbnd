@@ -20,7 +20,7 @@ def unknown_parameter_in_constructor(constructor, param_name, task_parent):
     )
 
     if task_parent:
-        help_msg += " at %s method!" % _band_call_str(task_parent)
+        help_msg += f" at {_band_call_str(task_parent)} method!"
 
     return UnknownParameterError(
         "Unknown parameter '{param_name}' at {constructor}".format(
@@ -36,7 +36,7 @@ def unknown_parameter_in_config(
     close_matches = difflib.get_close_matches(param_name, task_param_names)
     did_you_mean = None
     if close_matches:
-        did_you_mean = "Did you mean: %s" % (", ".join(close_matches))
+        did_you_mean = f'Did you mean: {", ".join(close_matches)}'
         help_msg = did_you_mean
     else:
         help_msg = "Remove '{param_name}' from the configuration.".format(
@@ -54,9 +54,9 @@ def unknown_parameter_in_config(
             task_name=task_name,
             param_name=param_name,
             source=source,
-            task_or_section="section [%s]" % task_name
+            task_or_section=f"section [{task_name}]"
             if config_type == "config"
-            else "task '%s'" % task_name,
+            else f"task '{task_name}'",
         ),
         help_msg=help_msg,
     )
@@ -77,19 +77,19 @@ def pipeline_task_has_unassigned_outputs(task, param):
 
 def failed_to_call_band(ex, task):
     return DatabandBuildError(
-        "Failed to call '%s': %s" % (_band_call_str(task), ex),
+        f"Failed to call '{_band_call_str(task)}': {ex}",
         show_exc_info=False,
         nested_exceptions=[ex],
-        help_msg="Check your %s logic" % _band_call_str(task),
+        help_msg=f"Check your {_band_call_str(task)} logic",
     )
 
 
 def failed_to_call(ex, task_cls):
     return DatabandBuildError(
-        "Failed to invoke '%s': %s" % (_band_call_str(task_cls), ex),
+        f"Failed to invoke '{_band_call_str(task_cls)}': {ex}",
         show_exc_info=False,
         nested_exceptions=[ex],
-        help_msg="Check your %s logic" % _band_call_str(task_cls),
+        help_msg=f"Check your {_band_call_str(task_cls)} logic",
     )
 
 
@@ -100,7 +100,7 @@ def failed_to_assign_param_value_at_band(ex, param, value, task):
         ),
         show_exc_info=False,
         nested_exceptions=[ex],
-        help_msg="Check your %s logic" % _band_call_str(task),
+        help_msg=f"Check your {_band_call_str(task)} logic",
     )
 
 
@@ -160,14 +160,5 @@ def failed_to_access_dbnd_home(dbnd_home, ex):
 
 def incomplete_output_found_for_task(task_name, complete_outputs, incomplete_outputs):
     return DatabandBuildError(
-        "Task {} has incomplete outputs! "
-        "This means the task might fail every time. "
-        "Complete outputs: {} "
-        "Incomplete outputs: {} "
-        "Hint: clean the environment or overwrite the output. "
-        "To ignore this error, turn off 'validate_task_outputs_on_build' in the '[run]' configuration section".format(
-            task_name,
-            ", ".join(map(str, complete_outputs)),
-            ", ".join(map(str, incomplete_outputs)),
-        )
+        f"""Task {task_name} has incomplete outputs! This means the task might fail every time. Complete outputs: {", ".join(map(str, complete_outputs))} Incomplete outputs: {", ".join(map(str, incomplete_outputs))} Hint: clean the environment or overwrite the output. To ignore this error, turn off 'validate_task_outputs_on_build' in the '[run]' configuration section"""
     )

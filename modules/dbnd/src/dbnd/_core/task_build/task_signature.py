@@ -26,9 +26,7 @@ def task_params_short(params):
         p[:TASK_ID_TRUNCATE_PARAMS]
         for p in (params[p] for p in sorted(params)[:TASK_ID_INCLUDE_PARAMS])
     )
-    param_summary = TASK_ID_INVALID_CHAR_REGEX.sub("_", param_summary)
-
-    return param_summary
+    return TASK_ID_INVALID_CHAR_REGEX.sub("_", param_summary)
 
 
 def build_signature(name, params, extra=None):
@@ -42,7 +40,7 @@ def build_signature(name, params, extra=None):
     # task_id is a concatenation of task family,
     # sorted by parameter name and a md5hash of the family/parameters as a cananocalised json.
 
-    params = {key: value for key, value in params}
+    params = dict(params)
 
     signature_dict = {"name": name, "params": params}
 
@@ -59,7 +57,7 @@ def build_signature(name, params, extra=None):
 
 
 def build_signature_from_values(name, struct):
-    values = set([str(value) for value in flatten(struct)])
+    values = {str(value) for value in flatten(struct)}
     signature_str = "|".join(sorted(values))
     signature = hashlib.md5(signature_str.encode("utf-8")).hexdigest()
     return Signature(name=name, signature=signature, signature_source=signature_str)

@@ -176,8 +176,7 @@ class TrackingTask(_BaseTask, _TaskCtrlMixin, _TaskParamContainer):
         self.task_call_source = [
             self.dbnd_context.user_code_detector.find_user_side_frame(1)
         ]
-        parent_task = try_get_current_task()
-        if parent_task:
+        if parent_task := try_get_current_task():
             parent_task.descendants.add_child(self.task_id)
             self.task_call_source.extend(parent_task.task_call_source)
 
@@ -196,7 +195,7 @@ class TrackingTask(_BaseTask, _TaskCtrlMixin, _TaskParamContainer):
             self.task_env = get_databand_context().env
             self.task_children_scope_params = {}
 
-        self.task_outputs = dict()
+        self.task_outputs = {}
         for parameter, value in self._params.get_params_with_value(
             ParameterFilters.OUTPUTS
         ):
@@ -255,17 +254,15 @@ class TrackingTask(_BaseTask, _TaskCtrlMixin, _TaskParamContainer):
         # in some sense this is a duplication of dbnd._core.task_ctrl.task_output_builder.calculate_path
         # but it also breaking an awful abstraction and a lot of inner functions which is good
         task_env = self.task_env
-        sep = "/"
         root = no_trailing_slash(str(task_env.root))
-        if windows_drive_re.match(root):
-            sep = os.sep
+        sep = os.sep if windows_drive_re.match(root) else "/"
         path = sep.join(
             (
                 root,
                 task_env.env_label,
                 str(self.task_target_date),
                 self.task_name,
-                self.task_name + "_" + self.task_signature,
+                f"{self.task_name}_{self.task_signature}",
                 "_meta_output",
                 "meta",
             )

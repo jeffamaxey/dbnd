@@ -94,7 +94,7 @@ def dbnd_cmd(command, args):
         str: result of command execution
     """
     assert command in cli.commands
-    if isinstance(args, six.string_types) or isinstance(args, six.text_type):
+    if isinstance(args, (six.string_types, six.text_type)):
         args = shlex.split(args, posix=not windows_compatible_mode)
     current_argv = sys.argv
     logger.info("Running dbnd run: %s", subprocess.list2cmdline(args))
@@ -114,17 +114,13 @@ def dbnd_run_cmd_main(task, env=None, args=None):
     """A wrapper for dbnd_cmd_run with error handling."""
     from dbnd import Task
 
-    if isinstance(task, Task):
-        task_str = task.get_full_task_family()
-    else:
-        task_str = task
-
+    task_str = task.get_full_task_family() if isinstance(task, Task) else task
     try:
         cmd_args = [task_str]
         if env is not None:
-            cmd_args = cmd_args + ["--env", env]
+            cmd_args += ["--env", env]
         if args is not None:
-            cmd_args = cmd_args + args
+            cmd_args += args
         return dbnd_run_cmd(cmd_args)
     except KeyboardInterrupt:
         logger.error("Keyboard interrupt, exiting...")
@@ -133,7 +129,7 @@ def dbnd_run_cmd_main(task, env=None, args=None):
         from dbnd._core.failures import get_databand_error_message
 
         msg, code = get_databand_error_message(ex=ex, args=sys.argv[1:])
-        logger.error("dbnd cmd run failed with error: {}".format(msg))
+        logger.error(f"dbnd cmd run failed with error: {msg}")
         if code is not None:
             sys.exit(code)
 

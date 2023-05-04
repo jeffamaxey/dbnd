@@ -21,9 +21,7 @@ class TaskSyncCtrl(TaskRunCtrl):
         self.remote_sync_root = self.task_env.dbnd_data_sync_root.folder("deploy")
 
     def sync_files(self, local_files):
-        if not local_files:
-            return []
-        return [self.sync(f) for f in local_files]
+        return [self.sync(f) for f in local_files] if local_files else []
 
     def sync(self, local_file):
         if not local_file:
@@ -45,9 +43,7 @@ class TaskSyncCtrl(TaskRunCtrl):
         return ",".join(synced_files_str)
 
     def is_remote(self, file):
-        if not file:
-            return None
-        return file.fs.name != FileSystems.local
+        return file.fs.name != FileSystems.local if file else None
 
     def _md5(self, local_path):
         with open(local_path, "rb+") as f:
@@ -59,7 +55,7 @@ class TaskSyncCtrl(TaskRunCtrl):
             return local_file
 
         file_name = path.basename(local_file.path)
-        remote_file_name = "{}/{}".format(md5_hash, file_name)
+        remote_file_name = f"{md5_hash}/{file_name}"
         return self.remote_sync_root.partition(remote_file_name)
 
     def _sync_remote(self, remote_file):
@@ -81,11 +77,11 @@ class TaskSyncCtrl(TaskRunCtrl):
         return remote_file
 
     def _sync(self, local_file):
-        if self.is_remote(local_file):
-            remote_file = self._sync_remote(local_file)
-        else:
-            remote_file = self._sync_local(local_file)
-        return remote_file
+        return (
+            self._sync_remote(local_file)
+            if self.is_remote(local_file)
+            else self._sync_local(local_file)
+        )
 
     def _upload(self, local_file, remote_file):
         remote_file.copy_from_local(local_file.path)

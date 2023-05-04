@@ -39,11 +39,11 @@ class TaskValidator(TaskCtrl):
                 % (missing_str, self.task.task_id)
             )
 
-        missing = []
-        for partial_output in flatten(self.relations.task_inputs_user):
-            if not partial_output.exists():
-                missing.append(partial_output)
-        if missing:
+        if missing := [
+            partial_output
+            for partial_output in flatten(self.relations.task_inputs_user)
+            if not partial_output.exists()
+        ]:
             raise friendly_error.task_data_source_not_exists(
                 self, missing, downstream=[self.task]
             )
@@ -99,12 +99,13 @@ def find_non_completed(targets):
 
 
 def find_non_consistent(targets):
-    non_consistent = list()
+    non_consistent = []
     for k, v in targets.items():
-        for partial_output in flatten(v):
-            if not partial_output.exist_after_write_consistent():
-                non_consistent.append(partial_output)
-
+        non_consistent.extend(
+            partial_output
+            for partial_output in flatten(v)
+            if not partial_output.exist_after_write_consistent()
+        )
     return non_consistent
 
 

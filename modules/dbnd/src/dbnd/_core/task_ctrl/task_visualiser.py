@@ -56,9 +56,7 @@ def _f_env(env):
 
 
 def _f_none_default(value, default):
-    if value != default:
-        return _important_value(value)
-    return value
+    return _important_value(value) if value != default else value
 
 
 class TaskVisualiser(object):
@@ -94,21 +92,22 @@ class TaskVisualiser(object):
             # different banners for tracking and orchestration
             if TaskEssence.TRACKING.is_instance(self.task):
                 builder.build_tracking_banner(task_run=task_run, exc_info=exc_info)
+            elif TaskEssence.CONFIG.is_instance(self.task):
+                builder.build_config_banner()
             else:
-                if TaskEssence.CONFIG.is_instance(self.task):
-                    builder.build_config_banner()
-                else:
-                    builder.build_orchestration_banner(
-                        task_run=task_run, exc_info=exc_info
-                    )
+                builder.build_orchestration_banner(
+                    task_run=task_run, exc_info=exc_info
+                )
 
             return self._banner.get_banner_str()
 
         except Exception as ex:
             log_exception(
-                "Failed to calculate banner for '%s'" % task_id, ex, non_critical=True
+                f"Failed to calculate banner for '{task_id}'",
+                ex,
+                non_critical=True,
             )
-            return msg + (" ( task_id=%s)" % task_id)
+            return f"{msg} ( task_id={task_id})"
 
 
 class _TaskBannerBuilder(TaskSubCtrl):
@@ -218,8 +217,7 @@ class _TaskBannerBuilder(TaskSubCtrl):
 
     def add_external_resource_info(self, task_run):
         self.banner.column_properties(
-            "EXTERNAL",
-            [(k, v) for k, v in six.iteritems(task_run.external_resource_urls)],
+            "EXTERNAL", list(six.iteritems(task_run.external_resource_urls))
         )
 
     def add_tracker_info(self, task_run):
@@ -269,12 +267,12 @@ class _TaskBannerBuilder(TaskSubCtrl):
         self.banner.column("DISABLED", self.banner.f_simple_dict(disable))
 
     def add_time_info(self, task_run):
-        time_fields = [("start", "%s" % task_run.start_time)]
+        time_fields = [("start", f"{task_run.start_time}")]
 
         if task_run.finished_time:
-            time_fields.append(("finished", "%s" % task_run.finished_time))
+            time_fields.append(("finished", f"{task_run.finished_time}"))
             task_duration = task_run.finished_time - task_run.start_time
-            time_fields.append(("duration", "%s" % task_duration))
+            time_fields.append(("duration", f"{task_duration}"))
 
         self.banner.column("TIME", self.banner.f_simple_dict(time_fields))
 
@@ -282,8 +280,7 @@ class _TaskBannerBuilder(TaskSubCtrl):
         if not hasattr(self.task, "task_call_source") or self.is_driver_or_submitter:
             return
 
-        task_call_source = task_call_source_to_str(self.task.task_call_source)
-        if task_call_source:
+        if task_call_source := task_call_source_to_str(self.task.task_call_source):
             self.banner.column("TASK CREATED AT", value=task_call_source)
 
     def _add_last_error_info(self, exc_info=None):
@@ -309,7 +306,7 @@ class _TaskBannerBuilder(TaskSubCtrl):
         if ex:
             self.banner.column(
                 colored("ERROR:", color="red", attrs=["bold"]),
-                "%s: %s" % (type(ex), str(ex)),
+                f"{type(ex)}: {str(ex)}",
                 raw_name=True,
             )
 
@@ -444,8 +441,7 @@ class _ParamTableDirector(object):
                     params_warnings.extend(param_value.warnings)
             except Exception as ex:
                 log_exception(
-                    "Failed to calculate parameter value for %s.%s"
-                    % (self.task.task_name, param_value.parameter.name),
+                    f"Failed to calculate parameter value for {self.task.task_name}.{param_value.parameter.name}",
                     ex,
                     non_critical=True,
                 )
@@ -506,7 +502,7 @@ class _ParamRecordBuilder(object):
     def reset(self, task, definition, value, meta):
         self.task = task
         self.definition = definition
-        self.value = value if not definition.hidden else "***"
+        self.value = "***" if definition.hidden else value
         self.meta = meta
         self.row = []
 
@@ -519,12 +515,11 @@ class _ParamRecordBuilder(object):
 
     def _param_kind(self):
         if self.definition.is_output():
-            p_kind = "output"
+            return "output"
         elif not self.definition.load_on_build:
-            p_kind = "input"
+            return "input"
         else:
-            p_kind = "param"
-        return p_kind
+            return "param"
 
     def add_type(self):
         self.row.append(self.definition.value_type_str)
@@ -572,7 +567,7 @@ class _ParamRecordBuilder(object):
             value_str = (
                 TextBanner.f_io(self.value)
                 if self._param_kind() in ["input", "output"]
-                and not self.definition.value_type_str == DataFrameValueType.type_str
+                and self.definition.value_type_str != DataFrameValueType.type_str
                 else self.definition.to_str(self.value)
             )
 
@@ -585,7 +580,7 @@ class _ParamRecordBuilder(object):
             )
             # we should add minimal preview
             if len(preview_value) < 100:
-                value_str += " :='%s'" % preview_value
+                value_str += f" :='{preview_value}'"
 
         if value_str and "\n" in value_str:
             # some simple heuristics around value

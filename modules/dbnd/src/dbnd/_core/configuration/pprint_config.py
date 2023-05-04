@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 def pformat_current_config(config, as_table=False, sections=None):
     # type: (DbndConfig, bool, Optional[Iterable[str]]) -> str
     config_layer = config.config_layer
-    tb = TextBanner("Config {}".format(config_layer.name))
+    tb = TextBanner(f"Config {config_layer.name}")
     tb.column("LAYERS", config_layer.config_layer_path)
     if as_table:
         view_str = pformat_config_store_as_table(
@@ -33,8 +33,6 @@ def pformat_current_config(config, as_table=False, sections=None):
 
 
 def pformat_config_store_as_table(config_store, sections=None):
-    # type: (_ConfigStore, Optional[Iterable[str]]) -> str
-    header = ["Section", "Key", "Value", "Source", "Priority"]
     data = []
     if sections:
         sections = [_lower_config_name(s) for s in sections]
@@ -42,11 +40,8 @@ def pformat_config_store_as_table(config_store, sections=None):
         sections = config_store.keys()
 
     for section in sections:
-        section_values = config_store.get(section)
-        if not section_values:
-            continue
-        for key, config_value in six.iteritems(section_values):
-            data.append(
+        if section_values := config_store.get(section):
+            data.extend(
                 (
                     section,
                     key,
@@ -54,9 +49,11 @@ def pformat_config_store_as_table(config_store, sections=None):
                     config_value.source,
                     config_value.priority,
                 )
+                for key, config_value in six.iteritems(section_values)
             )
-
     if data:
+        # type: (_ConfigStore, Optional[Iterable[str]]) -> str
+        header = ["Section", "Key", "Value", "Source", "Priority"]
         return safe_tabulate(tabular_data=data, headers=header)
     return ""
 
@@ -70,5 +67,5 @@ def pformat_all_layers(config, sections=None):
     # start from the first one
     for layer in reversed(layers):
         layer_values = layer.layer_config.as_value_dict(sections=sections)
-        tb.column("LAYER {}".format(layer.config_layer_path), tb.f_struct(layer_values))
+        tb.column(f"LAYER {layer.config_layer_path}", tb.f_struct(layer_values))
     return tb.get_banner_str()

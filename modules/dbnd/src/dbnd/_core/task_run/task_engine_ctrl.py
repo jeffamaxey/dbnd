@@ -26,18 +26,12 @@ class TaskEnginePolicyCtrl(TaskJobCtrl):
         if policy == ClusterPolicy.NONE:
             return root_task
 
-        # now we support only google cloud engine
-        if policy == ClusterPolicy.NONE:
-            return root_task
-
         if policy in [ClusterPolicy.CREATE, ClusterPolicy.EPHERMAL]:
-            create_task = cls.create_engine()
-            if create_task:
+            if create_task := cls.create_engine():
                 root_task.set_global_upstream(create_task)
 
         if policy in [ClusterPolicy.KILL, ClusterPolicy.EPHERMAL]:
-            delete_cluster = cls.terminate_engine()
-            if delete_cluster:
+            if delete_cluster := cls.terminate_engine():
                 root_task.set_downstream(delete_cluster)
 
         return root_task

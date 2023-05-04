@@ -118,8 +118,7 @@ class DateInterval(object):
         return date in self.dates()
 
     def __iter__(self):
-        for d in self.dates():
-            yield d
+        yield from self.dates()
 
     def __hash__(self):
         return hash(repr(self))

@@ -69,14 +69,10 @@ class ConfigValueType(ValueType):
         """
         Converts the :py:class:`dbnd.tasks.Task` (sub) class to its family name.
         """
-        if x:
-            return x.task_name
-        return super(ConfigValueType, self).to_str(x)
+        return x.task_name if x else super(ConfigValueType, self).to_str(x)
 
     def is_type_of(self, value):
         return isinstance(value, Config)
 
     def to_repr(self, x):
-        if x:
-            return '"%s"' % x.task_name
-        return "None"
+        return f'"{x.task_name}"' if x else "None"

@@ -28,11 +28,11 @@ def register_dbnd_plugins():
 
 def register_dbnd_user_plugins(user_plugin_modules):
     for plugin_module in user_plugin_modules:
-        module = _load_module(plugin_module, "plugin:%s" % plugin_module)
+        module = _load_module(plugin_module, f"plugin:{plugin_module}")
         pm.register(module)
 
-        base_msg = "Plugin %s" % plugin_module
+        base_msg = f"Plugin {plugin_module}"
         if getattr(module, "__version__", None):
-            base_msg += " v%s" % module.__version__
+            base_msg += f" v{module.__version__}"
 
-        logger.info(base_msg + " loaded...")
+        logger.info(f"{base_msg} loaded...")

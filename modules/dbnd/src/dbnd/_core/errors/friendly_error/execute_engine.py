@@ -3,7 +3,7 @@ from dbnd._core.errors import DatabandConfigError
 
 def parallel_or_remote_sqlite(executor):  # type: (str) -> DatabandConfigError
     return DatabandConfigError(
-        "'%s' executor is not supported when using an sqlite database" % executor,
+        f"'{executor}' executor is not supported when using an sqlite database",
         help_msg="Please switch to a different database for all parallel and "
         "remote executions (we recommend PostgreSQL)",
     )

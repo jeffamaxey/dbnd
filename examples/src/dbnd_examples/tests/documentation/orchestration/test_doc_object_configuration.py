@@ -18,7 +18,7 @@ def train_model(
 
 
 def calculate_alpha():
-    return "alpha=%s" % (time.time(),)
+    return f"alpha={time.time()}"
 
 
 #### DOC END

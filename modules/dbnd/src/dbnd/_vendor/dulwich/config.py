@@ -47,10 +47,7 @@ def lower_key(key):
     if isinstance(key, (bytes, str)):
         return key.lower()
 
-    if isinstance(key, Iterable):
-        return type(key)(map(lower_key, key))
-
-    return key
+    return type(key)(map(lower_key, key)) if isinstance(key, Iterable) else key
 
 
 class CaseInsensitiveDict(OrderedDict):
@@ -89,10 +86,7 @@ class CaseInsensitiveDict(OrderedDict):
         except KeyError:
             pass
 
-        if default is SENTINAL:
-            return type(self)()
-
-        return default
+        return type(self)() if default is SENTINAL else default
 
     def setdefault(self, key, default=SENTINAL):
         try:
@@ -213,12 +207,10 @@ class ConfigDict(Config, MutableMapping):
             section = (section,)
 
         section = tuple(
-            [
-                subsection.encode(self.encoding)
-                if not isinstance(subsection, bytes)
-                else subsection
-                for subsection in section
-            ]
+            subsection
+            if isinstance(subsection, bytes)
+            else subsection.encode(self.encoding)
+            for subsection in section
         )
 
         if not isinstance(name, bytes):
@@ -370,7 +362,7 @@ class ConfigFile(ConfigDict):
         ret = cls()
         section = None
         setting = None
-        for lineno, line in enumerate(f.readlines()):
+        for line in f.readlines():
             line = line.lstrip()
             if setting is None:
                 # Parse section header ("[bla]")
@@ -383,10 +375,10 @@ class ConfigFile(ConfigDict):
                     pts = line[1:last].split(b" ", 1)
                     line = line[last + 1 :]
                     if len(pts) == 2:
-                        if pts[1][:1] != b'"' or pts[1][-1:] != b'"':
-                            raise ValueError("Invalid subsection %r" % pts[1])
-                        else:
+                        if pts[1][:1] == b'"' and pts[1][-1:] == b'"':
                             pts[1] = pts[1][1:-1]
+                        else:
+                            raise ValueError("Invalid subsection %r" % pts[1])
                         if not _check_section_name(pts[0]):
                             raise ValueError("invalid section name %r" % pts[0])
                         section = (pts[0], pts[1])
@@ -394,10 +386,7 @@ class ConfigFile(ConfigDict):
                         if not _check_section_name(pts[0]):
                             raise ValueError("invalid section name %r" % pts[0])
                         pts = pts[0].split(b".", 1)
-                        if len(pts) == 2:
-                            section = (pts[0], pts[1])
-                        else:
-                            section = (pts[0],)
+                        section = (pts[0], pts[1]) if len(pts) == 2 else (pts[0], )
                     ret._values.setdefault(section)
                 if _strip_comments(line).strip() == b"":
                     continue
@@ -410,7 +399,7 @@ class ConfigFile(ConfigDict):
                     value = b"true"
                 setting = setting.strip()
                 if not _check_variable_name(setting):
-                    raise ValueError("invalid variable name %s" % setting)
+                    raise ValueError(f"invalid variable name {setting}")
                 if value.endswith(b"\\\n"):
                     continuation = value[:-2]
                 else:
@@ -418,15 +407,14 @@ class ConfigFile(ConfigDict):
                     value = _parse_string(value)
                     ret._values[section][setting] = value
                     setting = None
-            else:  # continuation line
-                if line.endswith(b"\\\n"):
-                    continuation += line[:-2]
-                else:
-                    continuation += line
-                    value = _parse_string(continuation)
-                    ret._values[section][setting] = value
-                    continuation = None
-                    setting = None
+            elif line.endswith(b"\\\n"):
+                continuation += line[:-2]
+            else:
+                continuation += line
+                value = _parse_string(continuation)
+                ret._values[section][setting] = value
+                continuation = None
+                setting = None
         return ret
 
     @classmethod
@@ -486,9 +474,7 @@ class StackedConfig(Config):
 
         See git-config(1) for details on the files searched.
         """
-        paths = []
-        paths.append(os.path.expanduser("~/.gitconfig"))
-
+        paths = [os.path.expanduser("~/.gitconfig")]
         xdg_config_home = os.environ.get(
             "XDG_CONFIG_HOME", os.path.expanduser("~/.config/"),
         )

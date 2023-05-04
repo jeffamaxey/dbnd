@@ -18,9 +18,6 @@ from dbnd._core.task_build.task_registry import get_task_registry
 from dbnd._core.tracking.managers.callable_tracking import _do_nothing_decorator
 
 
-if typing.TYPE_CHECKING:
-    pass
-
 logger = logging.getLogger(__name__)
 _default_output = parameter.output.pickle[object]
 

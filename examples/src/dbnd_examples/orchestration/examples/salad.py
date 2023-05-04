@@ -31,7 +31,7 @@ def add_dressing(chopped_vegetables, dressing, salt_amount="low"):
         raise TaskValidationError("Salt level is too high!")
 
     mix = [
-        "%s->%s  (%s salt)" % (dressing, v.rstrip(), salt_amount)
+        f"{dressing}->{v.rstrip()}  ({salt_amount} salt)"
         for v in chopped_vegetables
     ]
 
@@ -49,9 +49,7 @@ def cut(vegetables):
     # cuts vegetables
     chopped = []
 
-    logging.info(
-        "Got {}. Start Chopping.".format(",".join(vegetables)).replace("\n", "")
-    )
+    logging.info(f'Got {",".join(vegetables)}. Start Chopping.'.replace("\n", ""))
 
     for line in vegetables:
         chopped.extend(list(line.rstrip()))

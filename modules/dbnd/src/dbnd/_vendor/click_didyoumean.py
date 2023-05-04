@@ -54,9 +54,12 @@ class DYMMixin(object):  # pylint: disable=too-few-public-methods
         except click.exceptions.UsageError as error:
             error_msg = str(error)
             original_cmd_name = click.utils.make_str(args[0])
-            matches = difflib.get_close_matches(original_cmd_name,
-                                                self.list_commands(ctx), self.max_suggestions, self.cutoff)
-            if matches:
+            if matches := difflib.get_close_matches(
+                original_cmd_name,
+                self.list_commands(ctx),
+                self.max_suggestions,
+                self.cutoff,
+            ):
                 error_msg += '\n\nDid you mean one of these?\n    %s' % '\n    '.join(
                     matches)  # pylint: disable=line-too-long
 

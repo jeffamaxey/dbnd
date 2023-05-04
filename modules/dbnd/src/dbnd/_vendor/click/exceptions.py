@@ -4,7 +4,7 @@ from .utils import echo
 
 def _join_param_hints(param_hint):
     if isinstance(param_hint, (tuple, list)):
-        return ' / '.join('"%s"' % x for x in param_hint)
+        return ' / '.join(f'"{x}"' for x in param_hint)
     return param_hint
 
 
@@ -16,9 +16,8 @@ class ClickException(Exception):
 
     def __init__(self, message):
         ctor_msg = message
-        if PY2:
-            if ctor_msg is not None:
-                ctor_msg = ctor_msg.encode('utf-8')
+        if PY2 and ctor_msg is not None:
+            ctor_msg = ctor_msg.encode('utf-8')
         Exception.__init__(self, ctor_msg)
         self.message = message
 
@@ -37,7 +36,7 @@ class ClickException(Exception):
     def show(self, file=None):
         if file is None:
             file = get_text_stderr()
-        echo('Error: %s' % self.format_message(), file=file)
+        echo(f'Error: {self.format_message()}', file=file)
 
 
 class UsageError(ClickException):
@@ -67,7 +66,7 @@ class UsageError(ClickException):
         if self.ctx is not None:
             color = self.ctx.color
             echo(self.ctx.get_usage() + '\n%s' % hint, file=file, color=color)
-        echo('Error: %s' % self.format_message(), file=file, color=color)
+        echo(f'Error: {self.format_message()}', file=file, color=color)
 
 
 class BadParameter(UsageError):
@@ -100,10 +99,10 @@ class BadParameter(UsageError):
         elif self.param is not None:
             param_hint = self.param.get_error_hint(self.ctx)
         else:
-            return 'Invalid value: %s' % self.message
+            return f'Invalid value: {self.message}'
         param_hint = _join_param_hints(param_hint)
 
-        return 'Invalid value for %s: %s' % (param_hint, self.message)
+        return f'Invalid value for {param_hint}: {self.message}'
 
 
 class MissingParameter(BadParameter):
@@ -138,19 +137,13 @@ class MissingParameter(BadParameter):
 
         msg = self.message
         if self.param is not None:
-            msg_extra = self.param.type.get_missing_message(self.param)
-            if msg_extra:
+            if msg_extra := self.param.type.get_missing_message(self.param):
                 if msg:
-                    msg += '.  ' + msg_extra
+                    msg += f'.  {msg_extra}'
                 else:
                     msg = msg_extra
 
-        return 'Missing %s%s%s%s' % (
-            param_type,
-            param_hint and ' %s' % param_hint or '',
-            msg and '.  ' or '.',
-            msg or '',
-        )
+        return f"Missing {param_type}{param_hint and f' {param_hint}' or ''}{msg and '.  ' or '.'}{msg or ''}"
 
 
 class NoSuchOption(UsageError):
@@ -163,7 +156,7 @@ class NoSuchOption(UsageError):
     def __init__(self, option_name, message=None, possibilities=None,
                  ctx=None):
         if message is None:
-            message = 'no such option: %s' % option_name
+            message = f'no such option: {option_name}'
         UsageError.__init__(self, message, ctx)
         self.option_name = option_name
         self.possibilities = possibilities
@@ -172,10 +165,10 @@ class NoSuchOption(UsageError):
         bits = [self.message]
         if self.possibilities:
             if len(self.possibilities) == 1:
-                bits.append('Did you mean %s?' % self.possibilities[0])
+                bits.append(f'Did you mean {self.possibilities[0]}?')
             else:
                 possibilities = sorted(self.possibilities)
-                bits.append('(Possible options: %s)' % ', '.join(possibilities))
+                bits.append(f"(Possible options: {', '.join(possibilities)})")
         return '  '.join(bits)
 
 
@@ -218,7 +211,7 @@ class FileError(ClickException):
         self.filename = filename
 
     def format_message(self):
-        return 'Could not open file %s: %s' % (self.ui_filename, self.message)
+        return f'Could not open file {self.ui_filename}: {self.message}'
 
 
 class Abort(RuntimeError):

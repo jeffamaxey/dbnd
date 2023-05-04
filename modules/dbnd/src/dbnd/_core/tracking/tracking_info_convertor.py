@@ -275,8 +275,8 @@ def build_task_run_info(task_run):
     return TaskRunInfo(
         run_uid=task_run.run.run_uid,
         task_definition_uid=task_run.task.task_definition.task_definition_uid,
-        task_run_uid=task_run.task_run_uid,  # this is not the TaskRun uid
-        task_run_attempt_uid=task_run.task_run_attempt_uid,  # this is not the TaskRun uid
+        task_run_uid=task_run.task_run_uid,
+        task_run_attempt_uid=task_run.task_run_attempt_uid,
         task_id=t.task_id,
         task_af_id=task_run.task_af_id,
         name=t.task_name,
@@ -288,9 +288,9 @@ def build_task_run_info(task_run):
         functional_call=t.ctrl.task_repr.task_functional_call,
         has_downstreams=bool(task_dag.downstream),
         has_upstreams=bool(task_dag.upstream),
-        state=TaskRunState.SCHEDULED
-        if not task_run.is_reused
-        else TaskRunState.SUCCESS,
+        state=TaskRunState.SUCCESS
+        if task_run.is_reused
+        else TaskRunState.SCHEDULED,
         is_reused=task_run.is_reused,
         is_skipped=task_run.is_skipped,
         is_dynamic=task_run.is_dynamic,

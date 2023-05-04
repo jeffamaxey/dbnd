@@ -16,7 +16,7 @@ def is_git_dirty(path=None, verbose=False):
     try:
         repo = Repo.discover(path)
         status = porcelain.status(repo.path)
-        is_dirty = any(
+        return any(
             [
                 status.staged["add"],
                 status.staged["delete"],
@@ -25,7 +25,6 @@ def is_git_dirty(path=None, verbose=False):
                 len(status.untracked),
             ]
         )
-        return is_dirty
     except Exception as ex:
         if verbose:
             logger.warning("Failed to get GIT status %s: %s", path, ex)
@@ -33,13 +32,11 @@ def is_git_dirty(path=None, verbose=False):
 
 
 def get_git_commit(path, verbose=False):
-    env_commit = os.environ.get(GIT_ENV)
-    if env_commit:
+    if env_commit := os.environ.get(GIT_ENV):
         return env_commit
     try:
         repo = Repo.discover(path)
-        commit = repo.head().decode("utf-8")
-        return commit
+        return repo.head().decode("utf-8")
     except Exception as ex:
         if verbose:
             logger.warning("Failed to get GIT version of %s: %s", path, ex)

@@ -83,7 +83,7 @@ def tar_stream(store, tree, mtime, prefix=b'', format=''):
     :return: Bytestrings
     """
     buf = BytesIO()
-    with closing(tarfile.open(None, "w:%s" % format, buf)) as tar:
+    with closing(tarfile.open(None, f"w:{format}", buf)) as tar:
         if format == 'gz':
             # Manually correct the gzip header file modification time so that
             # archives created from the same Git tree are always identical.
@@ -126,7 +126,6 @@ def _walk_tree(store, tree, root=b''):
     for entry in tree.iteritems():
         entry_abspath = posixpath.join(root, entry.path)
         if stat.S_ISDIR(entry.mode):
-            for _ in _walk_tree(store, store[entry.sha], entry_abspath):
-                yield _
+            yield from _walk_tree(store, store[entry.sha], entry_abspath)
         else:
             yield (entry_abspath, entry)

@@ -31,7 +31,6 @@ class DbndVersionsClashWarning(UserWarning):
 
 @click.group()
 @click.option("--dbnd-run", required=True, type=click.Path())
-# option that disables the tracking store access.
 @click.option("--disable-tracking-api", is_flag=True, default=False)
 @click.option("--expected-dbnd-version", default=None)
 @click.option("--expected-python-version", default=None)
@@ -45,20 +44,12 @@ def execute(
         spark_dbnd_version = get_dbnd_version()
         if expected_python_version != spark_python_version:
             warn(
-                "You submitted job using Python {} but the Spark cluster uses Python {}. To "
-                "assure execution consistency use the same version in both places. Execution will"
-                "continue but it may fail due to version mismatch.".format(
-                    expected_python_version, spark_python_version
-                ),
+                f"You submitted job using Python {expected_python_version} but the Spark cluster uses Python {spark_python_version}. To assure execution consistency use the same version in both places. Execution willcontinue but it may fail due to version mismatch.",
                 DbndVersionsClashWarning,
             )
         if expected_dbnd_version != spark_dbnd_version:
             warn(
-                "You submitted job using dbnd {} but the Spark cluster uses dbnd {}. To "
-                "assure execution consistency use the same version in both places. Execution will"
-                "continue but it may fail due to version mismatch.".format(
-                    expected_dbnd_version, spark_dbnd_version
-                ),
+                f"You submitted job using dbnd {expected_dbnd_version} but the Spark cluster uses dbnd {spark_dbnd_version}. To assure execution consistency use the same version in both places. Execution willcontinue but it may fail due to version mismatch.",
                 DbndVersionsClashWarning,
             )
 
@@ -80,10 +71,10 @@ def run_task(ctx, task_id):
     run = ctx.obj["run"]  # type: DatabandRun
     with set_active_run_context(run):
         task = run._get_task_by_id(task_id)
-        task_run = task.current_task_run
         # this tracking store should be the same object as the one in the context but they're actually
         # different.
         if ctx.obj["disable_tracking_api"]:
+            task_run = task.current_task_run
             task_run.tracker.tracking_store.disable_tracking_api()
         with task.ctrl.task_context(phase=TaskContextPhase.RUN):
             task._task_run()

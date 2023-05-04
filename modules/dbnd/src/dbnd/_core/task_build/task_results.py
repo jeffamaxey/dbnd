@@ -32,7 +32,7 @@ class ResultProxyTarget(MultiTarget):
             yield self.get_sub_result(name)
 
     def __repr__(self):
-        return "result(%s)" % ",".join(self.names)
+        return f'result({",".join(self.names)})'
 
     def __getitem__(self, item):
         if isinstance(item, int):  # handle p[0]
@@ -40,14 +40,12 @@ class ResultProxyTarget(MultiTarget):
                 item = self.names[item]
             except IndexError:
                 raise IndexError(
-                    "ResultProxyTarget index out fo the range. This target has only {} elements".format(
-                        len(self.names)
-                    )
+                    f"ResultProxyTarget index out fo the range. This target has only {len(self.names)} elements"
                 )
         try:
             return self.get_sub_result(item)
         except AttributeError:
-            raise AttributeError("ResultProxyTarget has no `{}` target".format(item))
+            raise AttributeError(f"ResultProxyTarget has no `{item}` target")
 
     def as_dict(self):
         return {name: self.get_sub_result(name) for name in self.names}
@@ -81,13 +79,12 @@ class FuncResultParameter(ParameterDefinition):
             raise friendly_error.task_execution.wrong_return_value_len(
                 self.task_definition, self.names, result
             )
-        if isinstance(result, dict):
-            if set(result.keys()).symmetric_difference(set(self.names)):
-                raise NotSupportedValue(
-                    "Returned result doesn't match expected schema. Expected {}, got {}".format(
-                        self.names, result.keys()
-                    )
-                )
+        if isinstance(result, dict) and set(result.keys()).symmetric_difference(
+            set(self.names)
+        ):
+            raise NotSupportedValue(
+                f"Returned result doesn't match expected schema. Expected {self.names}, got {result.keys()}"
+            )
 
     def named_results(self, result):
         self._validate_result(result)

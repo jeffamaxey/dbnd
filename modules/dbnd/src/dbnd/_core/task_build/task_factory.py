@@ -203,19 +203,11 @@ class TaskFactory(object):
 
         # keep copy of user inputs
         self.task_kwargs__ctor = task_kwargs.copy()
-        self.task_args__ctor = list(task_args)
-
         self.task_env_config = None  # type: Optional[EnvConfig]
 
+        self.task_args__ctor = list(task_args)
         self.parent_task = try_get_current_task()
-        self._ctor_as_str = "%s@%s" % (
-            _get_call_repr(
-                self.task_passport.task_family,
-                self.task_args__ctor,
-                self.task_kwargs__ctor,
-            ),
-            str(self.task_cls),
-        )
+        self._ctor_as_str = f"{_get_call_repr(self.task_passport.task_family, self.task_args__ctor, self.task_kwargs__ctor)}@{str(self.task_cls)}"
 
         # extract all "system" keywords from kwargs
         # support task_family in kwargs -> use it as task_name (old behavior)
@@ -252,17 +244,16 @@ class TaskFactory(object):
         Wrap the extracting the value of param_def from configuration or config_path
         """
         try:
-            config_values_stack = self.config.get_multisection_config_value(
+            if config_values_stack := self.config.get_multisection_config_value(
                 self.config_sections, key=param_def.name
-            )
-            if config_values_stack:
+            ):
                 return config_values_stack
 
             if param_def.config_path:
-                config_path = self.config.get_config_value(
-                    section=param_def.config_path.section, key=param_def.config_path.key
-                )
-                if config_path:
+                if config_path := self.config.get_config_value(
+                    section=param_def.config_path.section,
+                    key=param_def.config_path.key,
+                ):
                     return [config_path]
             return []
         except Exception as ex:
@@ -418,7 +409,7 @@ class TaskFactory(object):
         override_signature = {}
         for p_obj, p_val in six.iteritems(self.task_config_override):
             if isinstance(p_obj, ParameterDefinition):
-                override_key = "%s.%s" % (p_obj.task_definition.task_family, p_obj.name)
+                override_key = f"{p_obj.task_definition.task_family}.{p_obj.name}"
                 override_value = (
                     p_val
                     if isinstance(p_val, six.string_types)
@@ -439,7 +430,7 @@ class TaskFactory(object):
             self.task_args__ctor, self.task_kwargs
         )
 
-        self._log_build_step("Resolving task params with %s" % self.config_sections)
+        self._log_build_step(f"Resolving task params with {self.config_sections}")
         try:
             task_param_values = self._build_task_param_values()
             task_params = Parameters(
@@ -450,10 +441,7 @@ class TaskFactory(object):
             self._log_config(force_log=True)
             raise
 
-        task_enabled = True
-        if self.parent_task and not self.parent_task.ctrl.should_run():
-            task_enabled = False
-
+        task_enabled = bool(not self.parent_task or self.parent_task.ctrl.should_run())
         # load from task_band if exists
         task_band_param = task_params.get_param_value(TASK_BAND_PARAMETER_NAME)
         if task_band_param and task_band_param.value:
@@ -468,11 +456,7 @@ class TaskFactory(object):
         override_signature = self._get_override_params_signature()
         # task schema id is unique per Class definition.
         # so if we have new implementation - we will not a problem with rerunning it
-        full_task_name = "%s@%s(object=%s)" % (
-            self.task_name,
-            self.task_definition.full_task_family,
-            str(id(self.task_definition)),
-        )
+        full_task_name = f"{self.task_name}@{self.task_definition.full_task_family}(object={id(self.task_definition)})"
 
         # now we don't know the real signature - so we calculate signature based on all known params
         cache_object_signature = build_signature(
@@ -481,7 +465,7 @@ class TaskFactory(object):
             extra={"task_override": override_signature},
         )
         self._log_build_step(
-            "Task task_signature %s" % str(cache_object_signature.signature)
+            f"Task task_signature {str(cache_object_signature.signature)}"
         )
 
         # If a Task has already been instantiated with the same parameters,
@@ -546,7 +530,7 @@ class TaskFactory(object):
 
         # used for target_format update
         # change param_def definition based on config state
-        target_def_key = "%s__target" % param_def.name
+        target_def_key = f"{param_def.name}__target"
         target_config = self.config.get_multisection_config_value(
             self.config_sections, key=target_def_key
         )
@@ -559,8 +543,7 @@ class TaskFactory(object):
             target_config = parse_target_config(target_config.value)
         except Exception as ex:
             raise param_def.parameter_exception(
-                "Calculate target config for %s : target_config='%s'"
-                % (target_def_key, target_config.value),
+                f"Calculate target config for {target_def_key} : target_config='{target_config.value}'",
                 ex,
             )
 
@@ -578,25 +561,14 @@ class TaskFactory(object):
         params_to_build = self.task_definition.task_param_defs.copy()
         task_param_values = []
 
-        # let's start to apply layers on current config
-        # at the end of the build we will save current layer and will make it "active" config
-        # during task execution/initializaiton
-
-        # SETUP: Task may have TaskClass.defaults= {...} - LOWEST priority
-        # add these values, so task build or nested tasks/configs builds will see it
-        task_defaults = self.task_definition.task_defaults_config_store
-        if task_defaults:
+        if task_defaults := self.task_definition.task_defaults_config_store:
             # task_defaults are processed at TaskDefinition,
             # it's ConfigStore with priority = ConfigValuePriority.FALLBACK,
             self.config.set_values(
                 config_values=task_defaults, source=self._source_name("task.defaults")
             )
 
-        # SETUP: build and apply any Task class level config
-        # User has specified "task_config = ..."
-        # Only orchestration tasks has this property
-        param_task_config = params_to_build.pop("task_config", None)
-        if param_task_config:
+        if param_task_config := params_to_build.pop("task_config", None):
             task_param_values.append(
                 self._calculate_and_add_layer_of_task_config(param_task_config)
             )
@@ -610,9 +582,7 @@ class TaskFactory(object):
                 priority=ConfigValuePriority.OVERRIDE,
             )
 
-        # SETUP: build and set EnvConfig
-        param_task_env = params_to_build.pop("task_env", None)
-        if param_task_env:
+        if param_task_env := params_to_build.pop("task_env", None):
             # we apply them to config only if there are no values (this is defaults)
             """
             find same parameters in the current task class and EnvConfig
@@ -800,8 +770,8 @@ class TaskFactory(object):
 
     def __str__(self):
         if self.task_name == self.task_passport.task_family:
-            return "TaskFactory(%s)" % self.task_name
-        return "TaskFactory(%s@%s)" % (self.task_name, self.task_family)
+            return f"TaskFactory({self.task_name})"
+        return f"TaskFactory({self.task_name}@{self.task_family})"
 
     def load_task_params_from_task_band(self, task_band, task_params):
         task_band_value = target(task_band).as_object.read_json()
@@ -859,19 +829,13 @@ class TaskFactory(object):
     def _get_task_or_config_string(self):
         from dbnd._core.task.config import Config
 
-        if issubclass(self.task_cls, Config):
-            return "config"
-        else:
-            return "task"
+        return "config" if issubclass(self.task_cls, Config) else "task"
 
     def _source_name(self, name):
         return self.task_definition.task_passport.format_source_name(name)
 
     def _log_task_build_warnings(self):
-        w = "Build warnings for %s '%s': " % (
-            self._get_task_or_config_string(),
-            self.task_name,
-        )
+        w = f"Build warnings for {self._get_task_or_config_string()} '{self.task_name}': "
 
         for warning in self.build_warnings:
             w += "\n\t" + str(warning)
@@ -906,10 +870,8 @@ def update_config_section_on_change_only(
 
 def _iterate_config_items(config, sections):
     for section_name in sections:
-        section = config.config_layer.config.get(section_name)
-        if section:
-            for key, value in iteritems(section):
-                yield key, value
+        if section := config.config_layer.config.get(section_name):
+            yield from iteritems(section)
 
 
 def _get_call_repr(call_name, call_args, call_kwargs):
@@ -920,9 +882,7 @@ def _get_call_repr(call_name, call_args, call_kwargs):
         if params:
             params += ", "
         params += ", ".join(
-            (
-                "%s=%s" % (p, safe_string(repr(k), 300))
-                for p, k in iteritems(call_kwargs)
-            )
+            f"{p}={safe_string(repr(k), 300)}"
+            for p, k in iteritems(call_kwargs)
         )
     return "{call_name}({params})".format(call_name=call_name, params=params)

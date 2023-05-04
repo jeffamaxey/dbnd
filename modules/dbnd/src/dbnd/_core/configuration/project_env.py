@@ -24,10 +24,9 @@ def _is_running_airflow_webserver():
     if sys.argv[0].endswith("airflow") and sys.argv[1] == "webserver":
         return True
 
-    if sys.argv[0].endswith("gunicorn") and "airflow-webserver" in sys.argv:
-        return True
-
-    return False
+    return bool(
+        sys.argv[0].endswith("gunicorn") and "airflow-webserver" in sys.argv
+    )
 
 
 def _init_windows_python_path(databand_package):

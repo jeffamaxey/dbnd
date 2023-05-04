@@ -100,7 +100,7 @@ def take_msb_bytes(read, crc32=None):
     :param read: Read function
     """
     ret = []
-    while len(ret) == 0 or ret[-1] & 0x80:
+    while not ret or ret[-1] & 0x80:
         b = read(1)
         if crc32 is not None:
             crc32 = binascii.crc32(b, crc32)
@@ -172,19 +172,21 @@ class UnpackedObject(object):
             return self.decomp_chunks
 
     def __eq__(self, other):
-        if not isinstance(other, UnpackedObject):
-            return False
-        for slot in self.__slots__:
-            if getattr(self, slot) != getattr(other, slot):
-                return False
-        return True
+        return (
+            all(
+                getattr(self, slot) == getattr(other, slot)
+                for slot in self.__slots__
+            )
+            if isinstance(other, UnpackedObject)
+            else False
+        )
 
     def __ne__(self, other):
         return not (self == other)
 
     def __repr__(self):
         data = ["%s=%r" % (s, getattr(self, s)) for s in self.__slots__]
-        return "%s(%s)" % (self.__class__.__name__, ", ".join(data))
+        return f'{self.__class__.__name__}({", ".join(data)})'
 
 
 _ZLIB_BUFSIZE = 4096
@@ -304,14 +306,13 @@ def load_pack_index_file(path, f):
     :return: A PackIndex loaded from the given file
     """
     contents, size = _load_file_contents(f)
-    if contents[:4] == b"\377tOc":
-        version = struct.unpack(b">L", contents[4:8])[0]
-        if version == 2:
-            return PackIndex2(path, file=f, contents=contents, size=size)
-        else:
-            raise KeyError("Unknown pack index format %d" % version)
-    else:
+    if contents[:4] != b"\377tOc":
         return PackIndex1(path, file=f, contents=contents, size=size)
+    version = struct.unpack(b">L", contents[4:8])[0]
+    if version == 2:
+        return PackIndex2(path, file=f, contents=contents, size=size)
+    else:
+        raise KeyError("Unknown pack index format %d" % version)
 
 
 def bisect_find_sha(start, end, sha, unpack_name):
@@ -344,15 +345,16 @@ class PackIndex(object):
     """
 
     def __eq__(self, other):
-        if not isinstance(other, PackIndex):
-            return False
-
-        for (name1, _, _), (name2, _, _) in izip(
-            self.iterentries(), other.iterentries()
-        ):
-            if name1 != name2:
-                return False
-        return True
+        return (
+            all(
+                name1 == name2
+                for (name1, _, _), (name2, _, _) in izip(
+                    self.iterentries(), other.iterentries()
+                )
+            )
+            if isinstance(other, PackIndex)
+            else False
+        )
 
     def __ne__(self, other):
         return not self.__eq__(other)
@@ -477,10 +479,7 @@ class FilePackIndex(PackIndex):
         self._filename = filename
         # Take the size now, so it can be checked each time we map the file to
         # ensure that it hasn't changed.
-        if file is None:
-            self._file = GitFile(filename, "rb")
-        else:
-            self._file = file
+        self._file = GitFile(filename, "rb") if file is None else file
         if contents is None:
             self._contents, self._size = _load_file_contents(self._file, size)
         else:
@@ -587,10 +586,7 @@ class FilePackIndex(PackIndex):
         """
         assert len(sha) == 20
         idx = ord(sha[:1])
-        if idx == 0:
-            start = 0
-        else:
-            start = self._fan_out_table[idx - 1]
+        start = 0 if idx == 0 else self._fan_out_table[idx - 1]
         end = self._fan_out_table[idx]
         i = bisect_find_sha(start, end, sha, self._unpack_name)
         if i is None:
@@ -684,10 +680,7 @@ def read_pack_header(read):
 
 
 def chunks_length(chunks):
-    if isinstance(chunks, bytes):
-        return len(chunks)
-    else:
-        return sum(imap(len, chunks))
+    return len(chunks) if isinstance(chunks, bytes) else sum(imap(len, chunks))
 
 
 def unpack_object(
@@ -721,11 +714,7 @@ def unpack_object(
     """
     if read_some is None:
         read_some = read_all
-    if compute_crc32:
-        crc32 = 0
-    else:
-        crc32 = None
-
+    crc32 = 0 if compute_crc32 else None
     bytes, crc32 = take_msb_bytes(read_all, crc32=crc32)
     type_num = (bytes[0] >> 4) & 0x07
     size = bytes[0] & 0x0F
@@ -762,9 +751,7 @@ def unpack_object(
 def _compute_object_size(value):
     """Compute the size of a unresolved object for use with LRUSizeCache."""
     (num, obj) = value
-    if num in DELTA_TYPES:
-        return chunks_length(obj[1])
-    return chunks_length(obj)
+    return chunks_length(obj[1]) if num in DELTA_TYPES else chunks_length(obj)
 
 
 class PackStreamReader(object):
@@ -776,10 +763,7 @@ class PackStreamReader(object):
 
     def __init__(self, read_all, read_some=None, zlib_bufsize=_ZLIB_BUFSIZE):
         self.read_all = read_all
-        if read_some is None:
-            self.read_some = read_all
-        else:
-            self.read_some = read_some
+        self.read_some = read_all if read_some is None else read_some
         self.sha = sha1()
         self._offset = 0
         self._rbuf = BytesIO()
@@ -841,8 +825,7 @@ class PackStreamReader(object):
 
     def recv(self, size):
         """Read up to size bytes, blocking until one byte is read."""
-        buf_len = self._buf_len()
-        if buf_len:
+        if buf_len := self._buf_len():
             data = self._rbuf.read(size)
             if size >= buf_len:
                 self._rbuf = BytesIO()
@@ -874,7 +857,7 @@ class PackStreamReader(object):
         if pack_version is None:
             return
 
-        for i in range(self._num_objects):
+        for _ in range(self._num_objects):
             offset = self.offset
             unpacked, unused = unpack_object(
                 self.read,
@@ -1025,10 +1008,7 @@ class PackData(object):
         self._filename = filename
         self._size = size
         self._header_size = 12
-        if file is None:
-            self._file = GitFile(self._filename, "rb")
-        else:
-            self._file = file
+        self._file = GitFile(self._filename, "rb") if file is None else file
         (version, self._num_objects) = read_pack_header(self._file.read)
         self._offset_cache = LRUSizeCache(
             1024 * 1024 * 20, compute_size=_compute_object_size
@@ -1194,8 +1174,7 @@ class PackData(object):
             object count
         :return: List of tuples with (sha, offset, crc32)
         """
-        ret = sorted(self.iterentries(progress=progress))
-        return ret
+        return sorted(self.iterentries(progress=progress))
 
     def create_index_v1(self, filename, progress=None):
         """Create a version 1 file for this data file.
@@ -1331,10 +1310,8 @@ class DeltaChainIterator(object):
 
     def _walk_all_chains(self):
         for offset, type_num in self._full_ofs:
-            for result in self._follow_chain(offset, type_num, None):
-                yield result
-        for result in self._walk_ref_chains():
-            yield result
+            yield from self._follow_chain(offset, type_num, None)
+        yield from self._walk_ref_chains()
         assert not self._pending_ofs
 
     def _ensure_no_pending(self):
@@ -1359,9 +1336,7 @@ class DeltaChainIterator(object):
             self._ext_refs.append(base_sha)
             self._pending_ref.pop(base_sha)
             for new_offset in pending:
-                for result in self._follow_chain(new_offset, type_num, chunks):
-                    yield result
-
+                yield from self._follow_chain(new_offset, type_num, chunks)
         self._ensure_no_pending()
 
     def _result(self, unpacked):
@@ -1542,12 +1517,12 @@ def write_pack(filename, objects, deltify=None, delta_window_size=None):
     :param deltify: Whether to deltify pack objects
     :return: Tuple with checksum of pack file and index file
     """
-    with GitFile(filename + ".pack", "wb") as f:
+    with GitFile(f"{filename}.pack", "wb") as f:
         entries, data_sum = write_pack_objects(
             f, objects, delta_window_size=delta_window_size, deltify=deltify
         )
     entries = sorted([(k, v[0], v[1]) for (k, v) in entries.items()])
-    with GitFile(filename + ".idx", "wb") as f:
+    with GitFile(f"{filename}.idx", "wb") as f:
         return data_sum, write_pack_index_v2(f, entries, data_sum)
 
 
@@ -1569,11 +1544,7 @@ def deltify_pack_objects(objects, window_size=None):
     # TODO(jelmer): Use threads
     if window_size is None:
         window_size = DEFAULT_PACK_DELTA_WINDOW_SIZE
-    # Build a list of objects ordered by the magic Linus heuristic
-    # This helps us find good objects to diff against us
-    magic = []
-    for obj, path in objects:
-        magic.append((obj.type_num, path, -obj.raw_length(), obj))
+    magic = [(obj.type_num, path, -obj.raw_length(), obj) for obj, path in objects]
     magic.sort()
 
     possible_bases = deque()
@@ -1684,7 +1655,7 @@ def write_pack_index_v1(f, entries, pack_checksum):
         f.write(struct.pack(">L", fan_out_table[i]))
         fan_out_table[i + 1] += fan_out_table[i]
     for (name, offset, entry_checksum) in entries:
-        if not (offset <= 0xFFFFFFFF):
+        if offset > 0xFFFFFFFF:
             raise TypeError("pack format 1 only supports offsets < 2Gb")
         f.write(struct.pack(">L20s", offset, name))
     assert len(pack_checksum) == 20
@@ -1752,7 +1723,7 @@ def create_delta(base_buf, target_buf):
                 out_buf += _encode_copy_operation(copy_start, to_copy)
                 copy_start += to_copy
                 copy_len -= to_copy
-        if opcode == "replace" or opcode == "insert":
+        if opcode in ["replace", "insert"]:
             # If we are replacing a range or adding one, then we just
             # output it to the stream (prefixed by its size)
             s = j2 - j1
@@ -1884,14 +1855,14 @@ class Pack(object):
         self._basename = basename
         self._data = None
         self._idx = None
-        self._idx_path = self._basename + ".idx"
-        self._data_path = self._basename + ".pack"
+        self._idx_path = f"{self._basename}.idx"
+        self._data_path = f"{self._basename}.pack"
         self._data_load = lambda: PackData(self._data_path)
         self._idx_load = lambda: load_pack_index(self._idx_path)
         self.resolve_ext_ref = resolve_ext_ref
 
     @classmethod
-    def from_lazy_objects(self, data_fn, idx_fn):
+    def from_lazy_objects(cls, data_fn, idx_fn):
         """Create a new pack object from callables to load pack data and
         index objects."""
         ret = Pack("")
@@ -1900,7 +1871,7 @@ class Pack(object):
         return ret
 
     @classmethod
-    def from_objects(self, data, idx):
+    def from_objects(cls, data, idx):
         """Create a new pack object from pack data and index objects."""
         ret = Pack("")
         ret._data_load = lambda: data
@@ -2045,7 +2016,7 @@ class Pack(object):
             to determine whether or not a .keep file is obsolete.
         :return: The path of the .keep file, as a string.
         """
-        keepfile_name = "%s.keep" % self._basename
+        keepfile_name = f"{self._basename}.keep"
         with GitFile(keepfile_name, "wb") as keepfile:
             if msg:
                 keepfile.write(msg)

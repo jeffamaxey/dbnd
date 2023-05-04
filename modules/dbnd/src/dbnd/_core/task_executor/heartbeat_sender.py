@@ -35,7 +35,7 @@ def start_heartbeat_sender(run_executor):
     run_config = settings.run
     heartbeat_interval_s = run_config.heartbeat_interval_s
 
-    if not heartbeat_interval_s > 0:
+    if heartbeat_interval_s <= 0:
         logger.info(
             "run heartbeat sender disabled (set task.heartbeat_interval_s to value > 0)"
         )
@@ -120,8 +120,7 @@ def send_heartbeat_continuously(
     run_uid, tracking_store, heartbeat_interval_s, driver_pid
 ):  # type: (str, TrackingStore, int, int) -> None
     logger.info(
-        "[heartbeat sender] starting heartbeat sender process (pid %s) with a send interval of %s seconds"
-        % (os.getpid(), heartbeat_interval_s)
+        f"[heartbeat sender] starting heartbeat sender process (pid {os.getpid()}) with a send interval of {heartbeat_interval_s} seconds"
     )
 
     try:

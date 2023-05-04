@@ -134,12 +134,7 @@ class DatabandRun(SingletonContext):
         self.run_folder_prefix = os.path.join(
             "log",
             self.execution_date.strftime("%Y-%m-%d"),
-            "%s_%s_%s"
-            % (
-                self.execution_date.strftime("%Y-%m-%dT%H%M%S.%f"),
-                self.job_name,
-                self.name,
-            ),
+            f'{self.execution_date.strftime("%Y-%m-%dT%H%M%S.%f")}_{self.job_name}_{self.name}',
         )
         self.run_root = self.env.dbnd_root.folder(self.run_folder_prefix)
         self.run_local_root = self.env.dbnd_local_root.folder(self.run_folder_prefix)
@@ -148,7 +143,7 @@ class DatabandRun(SingletonContext):
             require_submit=False
         )
 
-        self.dynamic_af_tasks_count = dict()
+        self.dynamic_af_tasks_count = {}
         self.af_context = af_context
         self.tracking_source = tracking_source
         self.start_time = None
@@ -195,10 +190,7 @@ class DatabandRun(SingletonContext):
         :return:
         """
         # in case orchestration/luigi/others has explicit task run
-        if self._driver_task_run:
-            return self._driver_task_run
-        # otherwise we should use just a main task as a "driver" task (tracking case)
-        return self.root_task_run
+        return self._driver_task_run if self._driver_task_run else self.root_task_run
 
     @driver_task_run.setter
     def driver_task_run(self, value):
@@ -263,9 +255,7 @@ class DatabandRun(SingletonContext):
     def _get_task_by_id(self, task_id):
         task = self.context.task_instance_cache.get_task_by_id(task_id)
         if task is None:
-            raise DatabandRuntimeError(
-                "Failed to find task %s in current context" % task_id
-            )
+            raise DatabandRuntimeError(f"Failed to find task {task_id} in current context")
 
         return task
 
@@ -280,13 +270,10 @@ class DatabandRun(SingletonContext):
         task_name = task.friendly_task_name
         if task_name in self.dynamic_af_tasks_count:
             self.dynamic_af_tasks_count[task_name] += 1
-            task_af_id = "{}_{}".format(
-                task_name, self.dynamic_af_tasks_count[task_name]
-            )
+            return f"{task_name}_{self.dynamic_af_tasks_count[task_name]}"
         else:
             self.dynamic_af_tasks_count[task_name] = 1
-            task_af_id = task_name
-        return task_af_id
+            return task_name
 
     def create_task_run_at_execution_time(self, task, task_engine, task_af_id=None):
         if task_af_id is None:
@@ -354,14 +341,9 @@ class DatabandRun(SingletonContext):
 
     def get_context_spawn_env(self):
         env = {}
-        if has_current_task():
-            current = current_task()
-        else:
-            current = self.root_task
-
+        current = current_task() if has_current_task() else self.root_task
         if current:
-            tr = self.get_task_run_by_id(current.task_id)
-            if tr:
+            if tr := self.get_task_run_by_id(current.task_id):
                 env[DBND_PARENT_TASK_RUN_UID] = str(tr.task_run_uid)
                 env[DBND_PARENT_TASK_RUN_ATTEMPT_UID] = str(tr.task_run_attempt_uid)
 
@@ -373,9 +355,7 @@ class DatabandRun(SingletonContext):
         return env
 
     def is_killed(self):
-        if self.run_executor:
-            return self.run_executor.is_killed()
-        return False
+        return self.run_executor.is_killed() if self.run_executor else False
 
     def kill(self):
         """
@@ -409,9 +389,7 @@ class DatabandRun(SingletonContext):
         return: TaskRunState
         """
         state = TaskRunState.UPSTREAM_FAILED
-        child_task_runs = task_run.task.descendants
-        # Since task run has children, IT'S a pipeline task, so we need to calculate it's state based on children states
-        if child_task_runs:
+        if child_task_runs := task_run.task.descendants:
             for task_run_id in child_task_runs.children:
                 child_tr_instance = self.get_task_run_by_id(task_run_id)
                 if child_tr_instance.task_run_state == TaskRunState.FAILED:

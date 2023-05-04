@@ -41,14 +41,7 @@ NOTHING = _Nothing()
 
 
 def is_defined(value):  # type: (Any) -> bool
-    if value is None:
-        return True  # value defined as None
-
-    # we can not check with   'value is NOTHING' as NOTHING ref is changed after serialization/deserialization
-    if isinstance(value, _Nothing):
-        return False
-
-    return True
+    return True if value is None else not isinstance(value, _Nothing)
 
 
 def is_not_defined(value):
@@ -56,6 +49,4 @@ def is_not_defined(value):
 
 
 def get_or_default(value, default):
-    if is_defined(value):
-        return value
-    return default
+    return value if is_defined(value) else default

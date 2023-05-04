@@ -26,9 +26,7 @@ class ConfigValueType(click.ParamType):
 
 
 def _help(string):
-    if not string:
-        return "-"
-    return strip_whitespace(string)
+    return strip_whitespace(string) if string else "-"
 
 
 def _help_short(string):

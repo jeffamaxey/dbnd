@@ -6,10 +6,8 @@ def unknown_value_type_in_parameter(type_):
     from targets.values import get_types_registry
 
     return DatabandBuildError(
-        "The parameter type '{}' is unknown, ".format(type_),
-        help_msg="Use one of: {}, or register the new one via  'register_custom_parameter'".format(
-            get_types_registry().list_known_types()
-        ),
+        f"The parameter type '{type_}' is unknown, ",
+        help_msg=f"Use one of: {get_types_registry().list_known_types()}, or register the new one via  'register_custom_parameter'",
     )
 
 
@@ -20,9 +18,7 @@ def no_value_type_defined_in_parameter(context):
         "The parameter {context} doesn't have type! Please use parameter[YOUR_TYPE] or parameter[object]".format(
             context=context
         ),
-        help_msg="Use one of: {}, or register the new type via  'register_custom_parameter'".format(
-            get_types_registry().list_known_types()
-        ),
+        help_msg=f"Use one of: {get_types_registry().list_known_types()}, or register the new type via  'register_custom_parameter'",
     )
 
 
@@ -35,9 +31,7 @@ def no_value_type_from_default(default_value, context):
         "Please use '{parameter} = parameter[YOUR_TYPE]' or '{parameter} = parameter[object]'".format(
             default_value=default_value, parameter=context
         ),
-        help_msg="Use one of: {}, or register the new type via  'register_custom_parameter'".format(
-            get_types_registry().list_known_types()
-        ),
+        help_msg=f"Use one of: {get_types_registry().list_known_types()}, or register the new type via  'register_custom_parameter'",
     )
 
 
@@ -46,7 +40,7 @@ def result_and_params_have_same_keys(context, conflict_keys):
         "{context} have same keys in result schema and function args: {conflict_keys}".format(
             context=context, conflict_keys=conflict_keys
         ),
-        help_msg="Please, check %s and rename conflicted keys" % context,
+        help_msg=f"Please, check {context} and rename conflicted keys",
     )
 
 
@@ -55,7 +49,7 @@ def task_env_param_with_no_env(context, key):
         "{context} can't calculate {key} and env is not defined".format(
             context=context, key=key
         ),
-        help_msg="Please, check that %s has task_env parameter" % context,
+        help_msg=f"Please, check that {context} has task_env parameter",
     )
 
 
@@ -76,7 +70,7 @@ def failed_to_build_parameter(context, parameter_state, ex):
         "Failed to build parameter '{context}' defined as '{parameter}': {ex}".format(
             context=context, parameter=parameter_state, ex=ex
         ),
-        help_msg="Validate parameter implementation at {}".format(context),
+        help_msg=f"Validate parameter implementation at {context}",
         nested_exceptions=[ex],
     )
 
@@ -88,7 +82,7 @@ def failed_to_convert_to_target_type(param, x, ex):
         ),
         show_exc_info=False,
         nested_exceptions=[ex],
-        help_msg="Check your %s logic" % param.name,
+        help_msg=f"Check your {param.name} logic",
     )
 
 
@@ -112,9 +106,7 @@ def sub_type_with_non_structural_value(context, value_type, sub_type):
 
 def dict_in_result_definition(result_deco):
     return DatabandBuildError(
-        "Result definition should be tuple/list, we don't support dict in definition, got: {}".format(
-            result_deco
-        ),
+        f"Result definition should be tuple/list, we don't support dict in definition, got: {result_deco}",
         help_msg="You can use dict for output of the task "
         "{'features': some_output, 'scores': some_outputs} "
         "but not in result=<DEFINITION>. For example: result=('features', 'scores')",
@@ -123,6 +115,5 @@ def dict_in_result_definition(result_deco):
 
 def wrong_result_definition(result_deco):
     return DatabandBuildError(
-        "{} should be Parameter of task_output kind , "
-        "or one of list/tuple of parameters or str".format(result_deco)
+        f"{result_deco} should be Parameter of task_output kind , or one of list/tuple of parameters or str"
     )

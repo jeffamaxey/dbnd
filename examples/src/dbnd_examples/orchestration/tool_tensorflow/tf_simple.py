@@ -104,7 +104,7 @@ class GenerateReport(PythonTask):
 
     def run(self):
         # for now, just a stub
-        logger.log("This is a report for %s" % self.model)
+        logger.log(f"This is a report for {self.model}")
 
         self.report.write("Some report!")
 

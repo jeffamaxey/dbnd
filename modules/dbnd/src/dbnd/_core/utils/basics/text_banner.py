@@ -27,7 +27,7 @@ def safe_string(value, max_value_len=1000):
 
         return safe_short_string(value=value, max_value_len=max_value_len)
     except Exception as ex:
-        return "Failed to convert value to string:%s" % ex
+        return f"Failed to convert value to string:{ex}"
 
 
 class TextBanner(StringIO):
@@ -52,20 +52,18 @@ class TextBanner(StringIO):
             structure_str,
             lambda x: x
             if not x or len(x) <= 600
-            else ("%s... (%s files)" % (x[:400], len(x.split(",")))),
+            else f'{x[:400]}... ({len(x.split(","))} files)',
         )
-        dumped = json_utils.dumps(structure_str, indent=2)
-        return dumped
+        return json_utils.dumps(structure_str, indent=2)
 
     def f_struct(self, structure):
         # return p.pformat(_dump_struct(structure))
         structure_str = traverse_to_str(structure)
-        dumped = json_utils.dumps(structure_str, indent=2)
-        return dumped
+        return json_utils.dumps(structure_str, indent=2)
 
     def f_simple_dict(self, params, skip_if_empty=False):
         return "  ".join(
-            "%s=%s" % (key, value)
+            f"{key}={value}"
             for key, value in params
             if not skip_if_empty or value is not None
         )
@@ -84,14 +82,10 @@ class TextBanner(StringIO):
         if skip_if_empty and value is None:
             return self
 
-        if isinstance(value, six.string_types):
-            if six.PY2:
-                value = value.encode("utf-8", errors="ignore")
-            else:
-                value = str(value)
+        if isinstance(value, six.string_types) and six.PY2:
+            value = value.encode("utf-8", errors="ignore")
         else:
             value = str(value)
-
         if skip_if_empty and not value:
             return self
 

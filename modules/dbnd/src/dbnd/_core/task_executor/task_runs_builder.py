@@ -31,7 +31,7 @@ logger = logging.getLogger(__name__)
 
 
 def check_if_completed_dfs(task, existing_completed_status=None):
-    completed_status = existing_completed_status or dict()
+    completed_status = existing_completed_status or {}
     task_id = task.task_id
     completed_status[task_id] = completed = task._complete()
     if not completed:
@@ -50,10 +50,10 @@ def check_if_completed_bfs(root_task, number_of_threads):
         while tasks_to_check_list:
             new_task_to_check_list = []
 
-            task_results = {}
-            for task in tasks_to_check_list:
-                task_results[executor.submit(task._complete)] = task.task_id
-
+            task_results = {
+                executor.submit(task._complete): task.task_id
+                for task in tasks_to_check_list
+            }
             for future in as_completed(task_results):
                 task_id = task_results[future]
                 try:
@@ -61,9 +61,7 @@ def check_if_completed_bfs(root_task, number_of_threads):
                     completed_status[task_id] = data
                 except Exception as e:
                     raise DatabandRuntimeError(
-                        "Failed to get completeness result of task_id {}".format(
-                            task_id
-                        ),
+                        f"Failed to get completeness result of task_id {task_id}",
                         nested_exceptions=e,
                     )
 
@@ -71,10 +69,11 @@ def check_if_completed_bfs(root_task, number_of_threads):
                 if completed_status[task.task_id]:
                     continue
 
-                for upstream_task in task.ctrl.task_dag.upstream:
-                    if upstream_task.task_id not in completed_status:
-                        new_task_to_check_list.append(upstream_task)
-
+                new_task_to_check_list.extend(
+                    upstream_task
+                    for upstream_task in task.ctrl.task_dag.upstream
+                    if upstream_task.task_id not in completed_status
+                )
             tasks_to_check_list = new_task_to_check_list
 
     return completed_status
@@ -88,7 +87,7 @@ def find_tasks_to_skip_complete(root_tasks, all_tasks, number_of_threads):
 
     if number_of_threads > 1:
         for t in root_tasks:
-            completed_status.update(check_if_completed_bfs(t, number_of_threads))
+            completed_status |= check_if_completed_bfs(t, number_of_threads)
     else:
         for t in root_tasks:
             completed_status.update(check_if_completed_dfs(t))

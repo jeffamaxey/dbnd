@@ -65,11 +65,7 @@ def get_tracking_store(
             raise friendly_error.config.wrong_store_name(name)
 
         instance = tracking_store_builder(databand_ctx)
-        if isinstance(name, tuple):
-            store_name = build_store_name(*name)
-        else:
-            store_name = name
-
+        store_name = build_store_name(*name) if isinstance(name, tuple) else name
         tracking_store_instances[store_name] = instance
 
     # We always use the CompositeTrackingStore cause it handle failure recovery for the inner tracking stores

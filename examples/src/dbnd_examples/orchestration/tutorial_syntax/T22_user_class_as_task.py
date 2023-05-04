@@ -22,7 +22,7 @@ class UserActionObject(object):
             raise Exception()
         if self.x_input == "sleep":
             time.sleep(self.sleep_period.total_seconds())
-        return "{} -> operation_x".format(self.x_input)
+        return f"{self.x_input} -> operation_x"
 
     def on_kill(self):
         logger.error("Running on_kill at %s..", self)
@@ -31,9 +31,7 @@ class UserActionObject(object):
 @pipeline
 def pipe_user_actions(pipe_argument="pipe"):
     step_1 = UserActionObject(x_input=pipe_argument)
-    step_2 = UserActionObject(x_input=step_1)
-
-    return step_2
+    return UserActionObject(x_input=step_1)
 
 
 if __name__ == "__main__":

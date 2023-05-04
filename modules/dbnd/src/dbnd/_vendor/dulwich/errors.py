@@ -36,13 +36,11 @@ class ChecksumMismatch(Exception):
         self.got = got
         self.extra = extra
         if self.extra is None:
-            Exception.__init__(
-                self, "Checksum mismatch: Expected %s, got %s" %
-                (expected, got))
+            Exception.__init__(self, f"Checksum mismatch: Expected {expected}, got {got}")
         else:
             Exception.__init__(
-                self, "Checksum mismatch: Expected %s, got %s; %s" %
-                (expected, got, extra))
+                self, f"Checksum mismatch: Expected {expected}, got {got}; {extra}"
+            )
 
 
 class WrongObjectException(Exception):
@@ -55,7 +53,7 @@ class WrongObjectException(Exception):
     """
 
     def __init__(self, sha, *args, **kwargs):
-        Exception.__init__(self, "%s is not a %s" % (sha, self.type_name))
+        Exception.__init__(self, f"{sha} is not a {self.type_name}")
 
 
 class NotCommitError(WrongObjectException):
@@ -87,14 +85,14 @@ class MissingCommitError(Exception):
 
     def __init__(self, sha, *args, **kwargs):
         self.sha = sha
-        Exception.__init__(self, "%s is not in the revision store" % sha)
+        Exception.__init__(self, f"{sha} is not in the revision store")
 
 
 class ObjectMissing(Exception):
     """Indicates that a requested object is missing."""
 
     def __init__(self, sha, *args, **kwargs):
-        Exception.__init__(self, "%s is not in the pack" % sha)
+        Exception.__init__(self, f"{sha} is not in the pack")
 
 
 class ApplyDeltaError(Exception):
@@ -145,11 +143,8 @@ class UnexpectedCommandError(GitProtocolError):
     """Unexpected command received in a proto line."""
 
     def __init__(self, command):
-        if command is None:
-            command = 'flush-pkt'
-        else:
-            command = 'command %s' % command
-        GitProtocolError.__init__(self, 'Protocol got unexpected %s' % command)
+        command = 'flush-pkt' if command is None else f'command {command}'
+        GitProtocolError.__init__(self, f'Protocol got unexpected {command}')
 
 
 class FileFormatException(Exception):

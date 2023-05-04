@@ -14,7 +14,7 @@ class MyConfig(object):
         self.config_ratio = config_ratio
 
     def __str__(self):
-        return "CONFIG: %s, %s" % (self.config_id, self.config_ratio)
+        return f"CONFIG: {self.config_id}, {self.config_ratio}"
 
 
 class MyConfigTypeHandler(ValueType):

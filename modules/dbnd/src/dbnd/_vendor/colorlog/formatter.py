@@ -136,9 +136,9 @@ class ColoredFormatter(logging.Formatter):
         codes = {**escape_codes}
         codes.setdefault("log_color", self._get_escape_code(self.log_colors, item))
         for name, colors in self.secondary_log_colors.items():
-            codes.setdefault("%s_log_color" % name, self._get_escape_code(colors, item))
+            codes.setdefault(f"{name}_log_color", self._get_escape_code(colors, item))
         if self._blank_escape_codes():
-            codes = {key: "" for key in codes.keys()}
+            codes = {key: "" for key in codes}
         return codes
 
     def _blank_escape_codes(self):
@@ -149,10 +149,7 @@ class ColoredFormatter(logging.Formatter):
         if self.no_color or "NO_COLOR" in os.environ:
             return True
 
-        if self.stream is not None and not self.stream.isatty():
-            return True
-
-        return False
+        return self.stream is not None and not self.stream.isatty()
 
     @staticmethod
     def _get_escape_code(log_colors: LogColors, item: str) -> str:

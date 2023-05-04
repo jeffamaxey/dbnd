@@ -27,9 +27,7 @@ def try_get_databand_context():
 
     from dbnd._core.context.databand_context import DatabandContext as _DatabandContext
 
-    if not _DatabandContext.has_instance():
-        return None
-    return get_databand_context()
+    return get_databand_context() if _DatabandContext.has_instance() else None
 
 
 def dbnd_context():
@@ -51,35 +49,22 @@ def get_databand_run():
     """Returns current Task/Pipeline/Flow instance."""
     from dbnd._core.run.databand_run import DatabandRun as _DatabandRun
 
-    v = _DatabandRun.get_instance()
-    return v
+    return _DatabandRun.get_instance()
 
 
 def try_get_databand_run():
     # type: () -> Optional[DatabandRun]
     from dbnd._core.run.databand_run import DatabandRun as _DatabandRun
 
-    if _DatabandRun.has_instance():
-        return get_databand_run()
-    return None
+    return get_databand_run() if _DatabandRun.has_instance() else None
 
 
 def in_tracking_run():
-    # type: () -> bool
-    run = try_get_databand_run()
-    if run:
-        return not run.is_orchestration
-
-    return False
+    return not run.is_orchestration if (run := try_get_databand_run()) else False
 
 
 def is_orchestration_run():
-    # type: () -> bool
-    run = try_get_databand_run()
-    if run:
-        return run.is_orchestration
-
-    return False
+    return run.is_orchestration if (run := try_get_databand_run()) else False
 
 
 def current_task():
@@ -112,13 +97,12 @@ def get_task_by_task_id(task_id):
 
 
 def try_get_current_task_run():
-    # type: () -> TaskRun
-    run = try_get_databand_run()
-    if not run:
-        return None
-    task = try_get_current_task()
-    if task:
-        return run.get_task_run(task.task_id)
+    if run := try_get_databand_run():
+        return (
+            run.get_task_run(task.task_id)
+            if (task := try_get_current_task())
+            else None
+        )
     else:
         return None
 
@@ -140,29 +124,29 @@ def current_task_run():
 
 
 def get_settings():
-    # type: () -> DatabandSettings
-    v = get_databand_context().settings  # type: DatabandSettings
-    return v
+    return get_databand_context().settings
 
 
 def is_verbose():
     context = try_get_databand_context()
-    if context and getattr(context, "system_settings", None):
-        if context.system_settings.verbose:
-            # only if True, otherwise check project config too
-            return True
+    if (
+        context
+        and getattr(context, "system_settings", None)
+        and context.system_settings.verbose
+    ):
+        # only if True, otherwise check project config too
+        return True
 
     return get_dbnd_project_config().is_verbose()
 
 
 def get_target_logging_level():
-    default_level = 10  # DEBUG
-
     context = try_get_databand_context()
     if context and getattr(context, "settings", None):
         return getattr(logging, context.settings.log.targets_log_level)
 
-    return default_level
+    else:
+        return 10
 
 
 def is_killed():

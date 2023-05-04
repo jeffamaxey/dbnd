@@ -6,9 +6,7 @@ from dbnd.utils import timezone
 
 
 def _dbnd_examples_project_root():
-    # if env var exists - use it as the examples dir, otherwise, calculate relative from here.
-    dbnd_examples_project = os.getenv("DBND_EXAMPLES_PATH", None)
-    if dbnd_examples_project:
+    if dbnd_examples_project := os.getenv("DBND_EXAMPLES_PATH", None):
         return dbnd_examples_project
 
     return abs_join(__file__, "..", "..", "..")

@@ -16,7 +16,7 @@ def apply_patch(base, delta, fields_filter=lambda f: not f.startswith("_")):
 
 
 def patch_module_attr(module, name, value):
-    original_name = "_original_" + name
+    original_name = f"_original_{name}"
     if getattr(module, original_name, None):
         return
     setattr(module, original_name, getattr(module, name))
@@ -24,7 +24,7 @@ def patch_module_attr(module, name, value):
 
 
 def unpatch_module_attr(module, name, value):
-    original_name = "_original_" + name
+    original_name = f"_original_{name}"
     if hasattr(module, original_name):
         setattr(module, name, getattr(module, original_name))
 
@@ -66,10 +66,7 @@ def tabulate_objects(
 def _timestamp(value):
     # type: (datetime.datetime)->float
     """backward support for timestamp in py2"""
-    if six.PY3:
-        return value.timestamp()
-
-    return time.mktime(value.timetuple())
+    return value.timestamp() if six.PY3 else time.mktime(value.timetuple())
 
 
 def safe_isinstance(obj, cls_str):
@@ -78,6 +75,4 @@ def safe_isinstance(obj, cls_str):
     This means that the isinstance check is performed without looking at the object's type hierarchy, but rather
     by class name.
     """
-    if cls_str and obj:
-        return cls_str in str(type(obj))
-    return False
+    return cls_str in str(type(obj)) if cls_str and obj else False

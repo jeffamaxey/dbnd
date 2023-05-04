@@ -33,7 +33,7 @@ def update_doc(slug, title, order, hidden, parent=""):
         "category": category_id,
     }
     if parent:
-        payload.update({"parentDoc": parent})
+        payload["parentDoc"] = parent
 
     response = requests.request("PUT", url, json=payload, headers=headers)
     if response.status_code == 200:

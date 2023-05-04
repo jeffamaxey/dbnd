@@ -276,9 +276,12 @@ class DbndProjectConfig(object):
         from dbnd._core.current import try_get_databand_context
 
         context = try_get_databand_context()
-        if context and getattr(context, "system_settings", None):
-            if context.system_settings.verbose:
-                return True
+        if (
+            context
+            and getattr(context, "system_settings", None)
+            and context.system_settings.verbose
+        ):
+            return True
 
         return self._verbose
 
@@ -307,7 +310,7 @@ class DbndProjectConfig(object):
 
 def _debug_init_print(msg):
     if _DBND_DEBUG_INIT:
-        print("DBND INIT: %s" % msg)
+        print(f"DBND INIT: {msg}")
 
 
 class DatabandHomeError(Exception):
@@ -351,10 +354,10 @@ def _process_cfg(folder):
                 config_value = parser.get("databand", config_key)
                 config_value = os.path.abspath(os.path.join(config_root, config_value))
                 set_env_dir(config_key, config_value)
-                _debug_init_print("%s: %s=%s" % (source, config_key, config_value))
+                _debug_init_print(f"{source}: {config_key}={config_value}")
 
         except Exception as ex:
-            print("Failed to process %s: %s" % (config_path, ex))
+            print(f"Failed to process {config_path}: {ex}")
 
     return found_dbnd_home, config_file
 
@@ -373,18 +376,18 @@ def __find_dbnd_home_at(folder):
     dbnd_home, config_file = _process_cfg(folder)
     if dbnd_home:
         _debug_init_print(
-            "Found dbnd home by at %s, by config file: %s" % (dbnd_home, config_file)
+            f"Found dbnd home by at {dbnd_home}, by config file: {config_file}"
         )
         return dbnd_home
 
     dbnd_home, marker_file = _has_marker_file(folder)
     if dbnd_home:
         _debug_init_print(
-            "Found dbnd home by at %s, by marker file: %s" % (dbnd_home, marker_file)
+            f"Found dbnd home by at {dbnd_home}, by marker file: {marker_file}"
         )
         return dbnd_home
 
-    _debug_init_print("dbnd home was not found at %s" % folder)
+    _debug_init_print(f"dbnd home was not found at {folder}")
     return False
 
 
@@ -392,21 +395,19 @@ def _find_and_set_dbnd_home():
     # falling back to simple version
     if _is_init_mode():
         dbnd_home = os.path.abspath(".")
-        print("Initializing new dbnd environment, using %s as DBND_HOME" % dbnd_home)
+        print(f"Initializing new dbnd environment, using {dbnd_home} as DBND_HOME")
         set_env_dir(ENV_DBND_HOME, dbnd_home)
         return True
 
-    # looking for dbnd project folder to be set as home
-    project_folder = _find_project_by_import()
-    if project_folder:
+    if project_folder := _find_project_by_import():
         _debug_init_print(
-            "Found project folder by import from marker %s" % project_folder
+            f"Found project folder by import from marker {project_folder}"
         )
         # we know about project folder, let try to find "custom" configs in it
         dbnd_home = __find_dbnd_home_at(project_folder)
         if not dbnd_home:
             _debug_init_print(
-                "No markers at %s! setting dbnd_home to %s" % (dbnd_home, dbnd_home)
+                f"No markers at {dbnd_home}! setting dbnd_home to {dbnd_home}"
             )
             dbnd_home = project_folder
 
@@ -418,8 +419,7 @@ def _find_and_set_dbnd_home():
     cur_dir_split = cur_dir.split(os.sep)
     cur_dir_split_reversed = reversed(list(enumerate(cur_dir_split)))
     _debug_init_print(
-        "Trying to find dbnd_home by traversing up to the root folder starting at %s"
-        % cur_dir
+        f"Trying to find dbnd_home by traversing up to the root folder starting at {cur_dir}"
     )
 
     for idx, cur_folder in cur_dir_split_reversed:
@@ -430,15 +430,12 @@ def _find_and_set_dbnd_home():
             set_env_dir(ENV_DBND_HOME, cur_path)
             return True
 
-        dbnd_home = __find_dbnd_home_at(cur_path)
-        if dbnd_home:
+        if dbnd_home := __find_dbnd_home_at(cur_path):
             set_env_dir(ENV_DBND_HOME, dbnd_home)
             return True
 
-    # last chance, we couldn't find dbnd project so we'll use user's home folder
-    user_home = os.path.expanduser("~")
-    if user_home:
-        _debug_init_print("dbnd home was not found. Using user's home: %s" % user_home)
+    if user_home := os.path.expanduser("~"):
+        _debug_init_print(f"dbnd home was not found. Using user's home: {user_home}")
         set_env_dir(ENV_DBND_HOME, user_home)
         return True
 
@@ -463,7 +460,7 @@ def _initialize_dbnd_home():
     _debug_init_print("_initialize_dbnd_home")
     project_config = get_dbnd_project_config()
     if project_config.disabled:
-        _debug_init_print("databand is disabled via %s" % ENV_DBND__DISABLED)
+        _debug_init_print(f"databand is disabled via {ENV_DBND__DISABLED}")
         return
 
     _debug_init_print("Initializing Databand Basic Environment")
@@ -516,7 +513,7 @@ def __initialize_dbnd_home_environ():
 
     if ENV_DBND_LIB in os.environ:
         # usually will not happen
-        _debug_init_print("Using DBND Library from %s" % os.environ[ENV_DBND_LIB])
+        _debug_init_print(f"Using DBND Library from {os.environ[ENV_DBND_LIB]}")
     else:
         os.environ[ENV_DBND_LIB] = _databand_package
 
@@ -527,7 +524,7 @@ def __initialize_airflow_home():
     if ENV_AIRFLOW_HOME in os.environ:
         # user settings - we do nothing
         _debug_init_print(
-            "Found user defined AIRFLOW_HOME at %s" % os.environ[ENV_AIRFLOW_HOME]
+            f"Found user defined AIRFLOW_HOME at {os.environ[ENV_AIRFLOW_HOME]}"
         )
         return
 
@@ -539,8 +536,7 @@ def __initialize_airflow_home():
             continue
 
         _debug_init_print(
-            "Found airflow home folder at DBND, setting AIRFLOW_HOME to %s"
-            % dbnd_airflow_home
+            f"Found airflow home folder at DBND, setting AIRFLOW_HOME to {dbnd_airflow_home}"
         )
         os.environ[ENV_AIRFLOW_HOME] = dbnd_airflow_home
 

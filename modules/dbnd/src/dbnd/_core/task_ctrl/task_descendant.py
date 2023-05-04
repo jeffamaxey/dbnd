@@ -15,15 +15,13 @@ class TaskDescendants(TaskSubCtrl):
         self.children.add(task_id)
 
     def get_children(self):
-        # type: (...)-> List[Task]
-        tic = self.dbnd_context.task_instance_cache
         children = []
+        tic = self.dbnd_context.task_instance_cache
         for c_id in self.children:
             child_task = tic.get_task_by_id(c_id)
             if child_task is None:
                 raise DatabandError(
-                    "You have created %s in different dbnd_context, "
-                    "can't find task object in current context!" % c_id
+                    f"You have created {c_id} in different dbnd_context, can't find task object in current context!"
                 )
             children.append(child_task)
         return children

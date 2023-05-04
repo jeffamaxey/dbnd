@@ -125,12 +125,12 @@ def _win32_peek_avail(handle):
     from ctypes import byref, windll, wintypes
     c_avail = wintypes.DWORD()
     c_message = wintypes.DWORD()
-    success = windll.kernel32.PeekNamedPipe(
-        handle, None, 0, None, byref(c_avail),
-        byref(c_message))
-    if not success:
+    if success := windll.kernel32.PeekNamedPipe(
+        handle, None, 0, None, byref(c_avail), byref(c_message)
+    ):
+        return c_avail.value
+    else:
         raise OSError(wintypes.GetLastError())
-    return c_avail.value
 
 
 COMMON_CAPABILITIES = [CAPABILITY_OFS_DELTA, CAPABILITY_SIDE_BAND_64K]
@@ -211,7 +211,7 @@ def read_pkt_refs(proto):
             (ref, server_capabilities) = extract_capabilities(ref)
         refs[ref] = sha
 
-    if len(refs) == 0:
+    if not refs:
         return {}, set([])
     if refs == {CAPABILITIES_REF: ZERO_SHA}:
         refs = {}
@@ -291,7 +291,7 @@ def _read_shallow_updates(proto):
         elif cmd == COMMAND_UNSHALLOW:
             new_unshallow.add(sha.strip())
         else:
-            raise GitProtocolError('unknown command %s' % pkt)
+            raise GitProtocolError(f'unknown command {pkt}')
     return (new_shallow, new_unshallow)
 
 
@@ -432,14 +432,11 @@ class GitClient(object):
             raise SendPackError(unpack)
         statuses = []
         errs = False
-        ref_status = proto.read_pkt_line()
-        while ref_status:
+        while ref_status := proto.read_pkt_line():
             ref_status = ref_status.strip()
             statuses.append(ref_status)
             if not ref_status.startswith(b'ok '):
                 errs = True
-            ref_status = proto.read_pkt_line()
-
         if errs:
             ref_status = {}
             ok = set()
@@ -490,7 +487,7 @@ class GitClient(object):
         :return: (have, want) tuple
         """
         want = []
-        have = [x for x in old_refs.values() if not x == ZERO_SHA]
+        have = [x for x in old_refs.values() if x != ZERO_SHA]
         sent_capabilities = False
 
         for refname in new_refs:
@@ -604,8 +601,7 @@ class GitClient(object):
         else:
             new_shallow = new_unshallow = set()
             proto.write_pkt_line(None)
-        have = next(graph_walker)
-        while have:
+        while have := next(graph_walker):
             proto.write_pkt_line(COMMAND_HAVE + b' ' + have + b'\n')
             if can_read is not None and can_read():
                 pkt = proto.read_pkt_line()
@@ -617,10 +613,7 @@ class GitClient(object):
                     elif parts[2] == b'ready':
                         break
                     else:
-                        raise AssertionError(
-                            "%s not in ('continue', 'ready', 'common)" %
-                            parts[2])
-            have = next(graph_walker)
+                        raise AssertionError(f"{parts[2]} not in ('continue', 'ready', 'common)")
         proto.write_pkt_line(COMMAND_DONE + b'\n')
         return (new_shallow, new_unshallow)
 
@@ -668,10 +661,9 @@ def check_wants(wants, refs):
     :param wants: Set of object SHAs to fetch
     :param refs: Refs dictionary to check against
     """
-    missing = set(wants) - {
-            v for (k, v) in refs.items()
-            if not k.endswith(ANNOTATED_TAG_SUFFIX)}
-    if missing:
+    if missing := set(wants) - {
+        v for (k, v) in refs.items() if not k.endswith(ANNOTATED_TAG_SUFFIX)
+    }:
         raise InvalidWants(missing)
 
 
@@ -912,7 +904,7 @@ class TCPGitClient(TraditionalGitClient):
         sockaddrs = socket.getaddrinfo(
             self._host, self._port, socket.AF_UNSPEC, socket.SOCK_STREAM)
         s = None
-        err = socket.error("no address found for %s" % self._host)
+        err = socket.error(f"no address found for {self._host}")
         for (family, socktype, proto, canonname, sockaddr) in sockaddrs:
             s = socket.socket(family, socktype, proto)
             s.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
@@ -962,12 +954,11 @@ class SubprocessWrapper(object):
         return self.proc.stderr
 
     def can_read(self):
-        if sys.platform == 'win32':
-            from msvcrt import get_osfhandle
-            handle = get_osfhandle(self.proc.stdout.fileno())
-            return _win32_peek_avail(handle) != 0
-        else:
+        if sys.platform != 'win32':
             return _fileno_can_read(self.proc.stdout.fileno())
+        from msvcrt import get_osfhandle
+        handle = get_osfhandle(self.proc.stdout.fileno())
+        return _win32_peek_avail(handle) != 0
 
     def close(self):
         self.proc.stdin.close()
@@ -980,16 +971,15 @@ class SubprocessWrapper(object):
 def find_git_command():
     """Find command to run for system Git (usually C Git).
     """
-    if sys.platform == 'win32':  # support .exe, .bat and .cmd
-        try:  # to avoid overhead
-            import win32api
-        except ImportError:  # run through cmd.exe with some overhead
-            return ['cmd', '/c', 'git']
-        else:
-            status, git = win32api.FindExecutable('git')
-            return [git]
-    else:
+    if sys.platform != 'win32':
         return ['git']
+    try:  # to avoid overhead
+        import win32api
+    except ImportError:  # run through cmd.exe with some overhead
+        return ['cmd', '/c', 'git']
+    else:
+        status, git = win32api.FindExecutable('git')
+        return [git]
 
 
 class SubprocessGitClient(TraditionalGitClient):
@@ -1091,11 +1081,10 @@ class LocalGitClient(GitClient):
                 if new_sha1 != ZERO_SHA:
                     if not target.refs.set_if_equals(
                             refname, old_sha1, new_sha1):
-                        progress('unable to set %s to %s' %
-                                 (refname, new_sha1))
+                        progress(f'unable to set {refname} to {new_sha1}')
                 else:
                     if not target.refs.remove_if_equals(refname, old_sha1):
-                        progress('unable to remove %s' % refname)
+                        progress(f'unable to remove {refname}')
 
         return new_refs
 
@@ -1213,7 +1202,7 @@ class SubprocessSSHVendor(SSHVendor):
             args.extend(['-i', str(key_filename)])
 
         if username:
-            host = '%s@%s' % (username, host)
+            host = f'{username}@{host}'
         if host.startswith('-'):
             raise StrangeHostname(hostname=host)
         args.append(host)
@@ -1231,11 +1220,7 @@ class PLinkSSHVendor(SSHVendor):
     def run_command(self, host, command, username=None, port=None,
                     password=None, key_filename=None):
 
-        if sys.platform == 'win32':
-            args = ['plink.exe', '-ssh']
-        else:
-            args = ['plink', '-ssh']
-
+        args = ['plink.exe', '-ssh'] if sys.platform == 'win32' else ['plink', '-ssh']
         if password is not None:
             import warnings
             warnings.warn(
@@ -1250,7 +1235,7 @@ class PLinkSSHVendor(SSHVendor):
             args.extend(['-i', str(key_filename)])
 
         if username:
-            host = '%s@%s' % (username, host)
+            host = f'{username}@{host}'
         if host.startswith('-'):
             raise StrangeHostname(hostname=host)
         args.append(host)
@@ -1286,10 +1271,7 @@ class SSHGitClient(TraditionalGitClient):
         self.key_filename = key_filename
         super(SSHGitClient, self).__init__(**kwargs)
         self.alternative_paths = {}
-        if vendor is not None:
-            self.ssh_vendor = vendor
-        else:
-            self.ssh_vendor = get_ssh_vendor()
+        self.ssh_vendor = vendor if vendor is not None else get_ssh_vendor()
 
     def get_url(self, path):
         netloc = self.host
@@ -1336,7 +1318,7 @@ class SSHGitClient(TraditionalGitClient):
 def default_user_agent_string():
     # Start user agent with "git/", because GitHub requires this. :-( See
     # https://github.com/jelmer/dulwich/issues/562 for details.
-    return "git/dulwich/%s" % ".".join([str(x) for x in dulwich.__version__])
+    return f'git/dulwich/{".".join([str(x) for x in dulwich.__version__])}'
 
 
 def default_urllib3_manager(config, **override_kwargs):
@@ -1378,18 +1360,14 @@ def default_urllib3_manager(config, **override_kwargs):
 
     headers = {"User-agent": user_agent}
 
-    kwargs = {}
-    if ssl_verify is True:
-        kwargs['cert_reqs'] = "CERT_REQUIRED"
-    elif ssl_verify is False:
-        kwargs['cert_reqs'] = 'CERT_NONE'
-    else:
-        # Default to SSL verification
-        kwargs['cert_reqs'] = "CERT_REQUIRED"
-
+    kwargs = {
+        'cert_reqs': "CERT_REQUIRED"
+        if ssl_verify is True or ssl_verify is not False
+        else 'CERT_NONE'
+    }
     if ca_certs is not None:
         kwargs['ca_certs'] = ca_certs
-    kwargs.update(override_kwargs)
+    kwargs |= override_kwargs
 
     # Try really hard to find a SSL certificate path
     if 'ca_certs' not in kwargs and kwargs.get('cert_reqs') != 'CERT_NONE':
@@ -1402,17 +1380,14 @@ def default_urllib3_manager(config, **override_kwargs):
 
     import urllib3
 
-    if proxy_server is not None:
-        # `urllib3` requires a `str` object in both Python 2 and 3, while
-        # `ConfigDict` coerces entries to `bytes` on Python 3. Compensate.
-        if not isinstance(proxy_server, str):
-            proxy_server = proxy_server.decode()
-        manager = urllib3.ProxyManager(proxy_server, headers=headers,
-                                       **kwargs)
-    else:
-        manager = urllib3.PoolManager(headers=headers, **kwargs)
+    if proxy_server is None:
+        return urllib3.PoolManager(headers=headers, **kwargs)
 
-    return manager
+    # `urllib3` requires a `str` object in both Python 2 and 3, while
+    # `ConfigDict` coerces entries to `bytes` on Python 3. Compensate.
+    if not isinstance(proxy_server, str):
+        proxy_server = proxy_server.decode()
+    return urllib3.ProxyManager(proxy_server, headers=headers, **kwargs)
 
 
 class HttpGitClient(GitClient):
@@ -1432,7 +1407,7 @@ class HttpGitClient(GitClient):
         if username is not None:
             # No escaping needed: ":" is not allowed in username:
             # https://tools.ietf.org/html/rfc2617#section-2
-            credentials = "%s:%s" % (username, password)
+            credentials = f"{username}:{password}"
             import urllib3.util
             basic_auth = urllib3.util.make_headers(basic_auth=credentials)
             self.pool_manager.headers.update(basic_auth)
@@ -1483,11 +1458,7 @@ class HttpGitClient(GitClient):
         if headers is not None:
             req_headers.update(headers)
         req_headers["Pragma"] = "no-cache"
-        if allow_compression:
-            req_headers["Accept-Encoding"] = "gzip"
-        else:
-            req_headers["Accept-Encoding"] = "identity"
-
+        req_headers["Accept-Encoding"] = "gzip" if allow_compression else "identity"
         if data is None:
             resp = self.pool_manager.request("GET", url, headers=req_headers)
         else:
@@ -1517,7 +1488,7 @@ class HttpGitClient(GitClient):
         tail = "info/refs"
         headers = {"Accept": "*/*"}
         if self.dumb is not True:
-            tail += "?service=%s" % service.decode('ascii')
+            tail += f"?service={service.decode('ascii')}"
         url = urlparse.urljoin(base_url, tail)
         resp, read = self._http_request(url, headers, allow_compression=True)
 
@@ -1525,42 +1496,42 @@ class HttpGitClient(GitClient):
             # Something changed (redirect!), so let's update the base URL
             if not resp.redirect_location.endswith(tail):
                 raise GitProtocolError(
-                        "Redirected from URL %s to URL %s without %s" % (
-                            url, resp.redirect_location, tail))
+                    f"Redirected from URL {url} to URL {resp.redirect_location} without {tail}"
+                )
             base_url = resp.redirect_location[:-len(tail)]
 
         try:
             self.dumb = not resp.content_type.startswith("application/x-git-")
-            if not self.dumb:
-                proto = Protocol(read, None)
-                # The first line should mention the service
-                try:
-                    [pkt] = list(proto.read_pkt_seq())
-                except ValueError:
-                    raise GitProtocolError(
-                        "unexpected number of packets received")
-                if pkt.rstrip(b'\n') != (b'# service=' + service):
-                    raise GitProtocolError(
-                        "unexpected first line %r from smart server" % pkt)
-                return read_pkt_refs(proto) + (base_url, )
-            else:
+            if self.dumb:
                 return read_info_refs(resp), set(), base_url
+            proto = Protocol(read, None)
+            # The first line should mention the service
+            try:
+                [pkt] = list(proto.read_pkt_seq())
+            except ValueError:
+                raise GitProtocolError(
+                    "unexpected number of packets received")
+            if pkt.rstrip(b'\n') != (b'# service=' + service):
+                raise GitProtocolError(
+                    "unexpected first line %r from smart server" % pkt)
+            return read_pkt_refs(proto) + (base_url, )
         finally:
             resp.close()
 
     def _smart_request(self, service, url, data):
         assert url[-1] == "/"
         url = urlparse.urljoin(url, service)
-        result_content_type = "application/x-%s-result" % service
+        result_content_type = f"application/x-{service}-result"
         headers = {
-            "Content-Type": "application/x-%s-request" % service,
+            "Content-Type": f"application/x-{service}-request",
             "Accept": result_content_type,
             "Content-Length": str(len(data)),
         }
         resp, read = self._http_request(url, headers, data)
         if resp.content_type != result_content_type:
-            raise GitProtocolError("Invalid content-type from server: %s"
-                                   % resp.content_type)
+            raise GitProtocolError(
+                f"Invalid content-type from server: {resp.content_type}"
+            )
         return resp, read
 
     def send_pack(self, path, update_refs, generate_pack_data,
@@ -1694,7 +1665,7 @@ def get_transport_and_path_from_url(url, config=None, **kwargs):
         return default_local_git_client_cls.from_parsedurl(
             parsed, **kwargs), parsed.path
 
-    raise ValueError("unknown scheme '%s'" % parsed.scheme)
+    raise ValueError(f"unknown scheme '{parsed.scheme}'")
 
 
 def parse_rsync_url(location):

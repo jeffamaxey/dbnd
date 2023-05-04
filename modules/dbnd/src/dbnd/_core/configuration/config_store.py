@@ -42,9 +42,7 @@ class _ConfigStore(OrderedDict):
     def get_config_value(self, section, key):
         # type: (str, str)->Optional[ConfigValue]
         section = self.get(_lower_config_name(section))
-        if not section:
-            return None
-        return section.get(_lower_config_name(key))
+        return section.get(_lower_config_name(key)) if section else None
 
     def set_config_value(self, section, key, value):
         self[_lower_config_name(section)][_lower_config_name(key)] = value
@@ -54,11 +52,9 @@ class _ConfigStore(OrderedDict):
         for section, section_values in six.iteritems(config_values):
             # shallow copy of configuration
             section = _lower_config_name(section)
-            replace_current_section = section_values.pop(
+            if replace_current_section := section_values.pop(
                 CONFIG_REPLACE_SECTION_MARKER, None
-            )
-
-            if replace_current_section:
+            ):
                 # we can not just reuse section from right -> it's mutable objects
                 self[section] = current_section = _config_dict_type()
             else:
@@ -66,8 +62,7 @@ class _ConfigStore(OrderedDict):
 
             for key, value in six.iteritems(section_values):
                 key = _lower_config_name(key)
-                old_value = current_section.get(key)
-                if old_value:
+                if old_value := current_section.get(key):
                     if old_value.priority > value.priority:
                         continue
                 current_section[key] = value

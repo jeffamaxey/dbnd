@@ -12,7 +12,7 @@ class TrackingWebChannel(MarshmallowMixin, TrackingChannel):
     def _handle(self, name, data):
         # this method may raise an  exception  in case of connectivity/server errors
         # such exceptions will be handled on upper layer
-        return self.client.api_request("tracking/%s" % name, data)
+        return self.client.api_request(f"tracking/{name}", data)
 
     def is_ready(self):
         return self.client.is_ready()

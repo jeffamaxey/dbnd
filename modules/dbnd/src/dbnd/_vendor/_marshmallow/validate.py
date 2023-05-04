@@ -51,22 +51,28 @@ class URL(Validator):
             self._memoized = {}
 
         def _regex_generator(self, relative, require_tld):
-            return re.compile(r''.join((
-                r'^',
-                r'(' if relative else r'',
-                r'(?:[a-z0-9\.\-\+]*)://',  # scheme is validated separately
-                r'(?:[^:@]+?(:[^:@]*?)?@|)',  # basic auth
-                r'(?:(?:[A-Z0-9](?:[A-Z0-9-]{0,61}[A-Z0-9])?\.)+',
-                r'(?:[A-Z]{2,6}\.?|[A-Z0-9-]{2,}\.?)|',  # domain...
-                r'localhost|',  # localhost...
-                (r'(?:[A-Z0-9](?:[A-Z0-9-]{0,61}[A-Z0-9])?\.?)|'
-                 if not require_tld else r''),  # allow dotless hostnames
-                r'\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}|',  # ...or ipv4
-                r'\[?[A-F0-9]*:[A-F0-9:]+\]?)',  # ...or ipv6
-                r'(?::\d+)?',  # optional port
-                r')?' if relative else r'',  # host is optional, allow for relative URLs
-                r'(?:/?|[/?]\S+)$',
-            )), re.IGNORECASE)
+            return re.compile(
+                r''.join(
+                    (
+                        r'^',
+                        r'(' if relative else r'',
+                        r'(?:[a-z0-9\.\-\+]*)://',
+                        r'(?:[^:@]+?(:[^:@]*?)?@|)',
+                        r'(?:(?:[A-Z0-9](?:[A-Z0-9-]{0,61}[A-Z0-9])?\.)+',
+                        r'(?:[A-Z]{2,6}\.?|[A-Z0-9-]{2,}\.?)|',
+                        r'localhost|',
+                        r''
+                        if require_tld
+                        else r'(?:[A-Z0-9](?:[A-Z0-9-]{0,61}[A-Z0-9])?\.?)|',
+                        r'\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}|',
+                        r'\[?[A-F0-9]*:[A-F0-9:]+\]?)',
+                        r'(?::\d+)?',
+                        r')?' if relative else r'',
+                        r'(?:/?|[/?]\S+)$',
+                    )
+                ),
+                re.IGNORECASE,
+            )
 
         def __call__(self, relative, require_tld):
             key = (relative, require_tld)
@@ -154,16 +160,18 @@ class Email(Validator):
         if not self.USER_REGEX.match(user_part):
             raise ValidationError(message)
 
-        if domain_part not in self.DOMAIN_WHITELIST:
-            if not self.DOMAIN_REGEX.match(domain_part):
-                try:
-                    domain_part = domain_part.encode('idna').decode('ascii')
-                except UnicodeError:
-                    pass
-                else:
-                    if self.DOMAIN_REGEX.match(domain_part):
-                        return value
-                raise ValidationError(message)
+        if (
+            domain_part not in self.DOMAIN_WHITELIST
+            and not self.DOMAIN_REGEX.match(domain_part)
+        ):
+            try:
+                domain_part = domain_part.encode('idna').decode('ascii')
+            except UnicodeError:
+                pass
+            else:
+                if self.DOMAIN_REGEX.match(domain_part):
+                    return value
+            raise ValidationError(message)
 
         return value
 

@@ -103,9 +103,7 @@ class TBVaccine:
             # Check if there's an ANSI escape in the last few chars of max_length and break before it.
             if "\x1b" in short_text[-10:]:
                 short_text = short_text[: short_text.rfind("\x1b")]
-            text = short_text + "\x1b[0m ... ({} more chars)".format(
-                len(text) - len(short_text)
-            )
+            text = f"{short_text}\x1b[0m ... ({len(text) - len(short_text)} more chars)"
         if fg or style:
             styles = {"bright": 1, None: 0}
             colors = {
@@ -167,9 +165,11 @@ class _TBMessage(object):
         """
         Decide whether the file in the traceback is one in our code_dir or not.
         """
-        if not self.tbv._user_code_detector:
-            return True
-        return self.tbv._user_code_detector.is_user_file(self._file)
+        return (
+            self.tbv._user_code_detector.is_user_file(self._file)
+            if self.tbv._user_code_detector
+            else True
+        )
 
     def _print(self, text, fg=None, style=None, max_length=None):
 
@@ -196,17 +196,17 @@ class _TBMessage(object):
         """
         Process a line of code in the traceback.
         """
-        if not self._user_space():
-            if self.tbv.skip_non_user_on_isolate and not self._found_user_code:
-                return False
-            # Print without colors.
-            self._print(line)
-        else:
+        if self._user_space():
             if self.tbv._isolate:
                 line = line[1:]
                 self._print(">", fg="red", style="bright")
             self._print(line, fg="gray")
 
+        elif self.tbv.skip_non_user_on_isolate and not self._found_user_code:
+            return False
+        else:
+            # Print without colors.
+            self._print(line)
         return True
 
     def _process_file_line(self, line):

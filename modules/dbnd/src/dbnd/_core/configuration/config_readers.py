@@ -52,8 +52,7 @@ def _default_configuration_paths():
         get_dbnd_custom_config(),
         dbnd_project_config.dbnd_project_path("project.cfg"),
     ]
-    env_config = get_dbnd_environ_config_file()
-    if env_config:
+    if env_config := get_dbnd_environ_config_file():
         possible_locations.append(env_config)
     for value in possible_locations:
         value = expand_env_var(value)
@@ -100,16 +99,15 @@ def read_from_config_file(config_file_target):
         and ".zip/" in config_file_target.path
     ):
         zip_file_path, config_path_inside_zip = config_file_target.path.split(".zip/")
-        if os.path.exists(zip_file_path + ".zip"):
+        if os.path.exists(f"{zip_file_path}.zip"):
             import zipfile
 
-            archive = zipfile.ZipFile(zip_file_path + ".zip", "r")
+            archive = zipfile.ZipFile(f"{zip_file_path}.zip", "r")
             if config_path_inside_zip not in archive.namelist():
                 raise DatabandConfigError(
-                    "Failed to read configuration file at %s, file not found!"
-                    % config_file_target
+                    f"Failed to read configuration file at {config_file_target}, file not found!"
                 )
-            archive = zipfile.ZipFile(zip_file_path + ".zip", "r")
+            archive = zipfile.ZipFile(f"{zip_file_path}.zip", "r")
             with archive.open(config_path_inside_zip) as file_io:
                 return read_from_config_stream(
                     Text.pipe_reader(file_io), str(config_file_target)
@@ -117,8 +115,7 @@ def read_from_config_file(config_file_target):
 
     if not config_file_target.exists():
         raise DatabandConfigError(
-            "Failed to read configuration file at %s, file not found!"
-            % config_file_target
+            f"Failed to read configuration file at {config_file_target}, file not found!"
         )
     with config_file_target.open("r") as fp:
         return read_from_config_stream(fp, str(config_file_target))
@@ -140,12 +137,11 @@ def read_from_config_files(config_files):
             raise
         except Exception as ex:
             raise DatabandConfigError(
-                "Failed to read configuration file at %s: %s" % (f, ex),
+                f"Failed to read configuration file at {f}: {ex}",
                 nested_exceptions=ex,
             )
 
-    merged_file_config = functools.reduce((lambda x, y: x.update(y)), configs)
-    return merged_file_config
+    return functools.reduce((lambda x, y: x.update(y)), configs)
 
 
 def read_environ_config():
@@ -163,23 +159,15 @@ def get_environ_config_from_dict(env_dict, source_prefix):
     for key, value in six.iteritems(env_dict):
         if not key.startswith("DBND__"):
             continue
-        # must have format DBND__{SECTION}__{KEY} (note double underscore)
-        dbnd_key_var = _DBND_ENVIRON_RE.match(key)
-        if dbnd_key_var:
+        if dbnd_key_var := _DBND_ENVIRON_RE.match(key):
             section, key = dbnd_key_var.group(1), dbnd_key_var.group(2)
             dbnd_environ.set_config_value(
                 section,
                 key,
                 ConfigValue(
-                    value,
-                    source="{}[{}]".format(source_prefix, key),
-                    require_parse=True,
+                    value, source=f"{source_prefix}[{key}]", require_parse=True
                 ),
             )
-        else:
-            # check that it's known name, or print error
-            pass
-
     return dbnd_environ
 
 
@@ -211,22 +199,19 @@ def parse_and_build_config_store(
     for section, section_values in six.iteritems(config_values):
         if isinstance(section, six.string_types):
             if auto_section_parse:
-                m = _SECTION_NAME_RE.match(section)
-                if m:  # section contains key!
+                if m := _SECTION_NAME_RE.match(section):
                     section, key = m.group(1), m.group(2)
                     section_values = {key: section_values}
 
             if not isinstance(section_values, Mapping):
-                raise DatabandConfigError(
-                    "can't convert '%s' to configuration " % config_values
-                )
+                raise DatabandConfigError(f"can't convert '{config_values}' to configuration ")
         elif isinstance(section, ParameterDefinition):
             # this is parameter ->  Spark.jars = ["jars"]
             section_values = {section.name: section_values}
             section = section.task_config_section
 
         else:
-            raise Exception("section='%s' not supported" % section)
+            raise Exception(f"section='{section}' not supported")
 
         new_section = new_config[section]
         for key, value in six.iteritems(section_values):

@@ -3,9 +3,7 @@ import os
 from sys import platform as _platform
 
 
-is_osx = False
-if _platform == "darwin":
-    is_osx = True
+is_osx = _platform == "darwin"
 
 
 def enable_osx_forked_request_calls():

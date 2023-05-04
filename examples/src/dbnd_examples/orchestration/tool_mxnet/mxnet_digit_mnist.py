@@ -22,9 +22,7 @@ def create_mlp_digit_classifier():
 
     # MNIST has 10 classes
     fc3 = mx.sym.FullyConnected(data=act2, num_hidden=10)
-    # Softmax with cross entropy loss
-    mlp = mx.sym.SoftmaxOutput(data=fc3, name="softmax")
-    return mlp
+    return mx.sym.SoftmaxOutput(data=fc3, name="softmax")
 
 
 def create_lenet_digit_classifier():
@@ -43,9 +41,7 @@ def create_lenet_digit_classifier():
     tanh3 = mx.sym.Activation(data=fc1, act_type="tanh")
     # second fullc
     fc2 = mx.sym.FullyConnected(data=tanh3, num_hidden=10)
-    # softmax loss
-    lenet = mx.sym.SoftmaxOutput(data=fc2, name="softmax")
-    return lenet
+    return mx.sym.SoftmaxOutput(data=fc2, name="softmax")
 
 
 class TrainModel(MXNetTask):

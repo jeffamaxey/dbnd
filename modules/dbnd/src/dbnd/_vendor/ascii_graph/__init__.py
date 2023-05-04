@@ -73,10 +73,7 @@ class Pyasciigraph:
         self.max_value = force_max_value
         self.float_format = float_format
         self.titlebar = titlebar
-        if graphsymbol is None:
-            self.graphsymbol = self._u('█')
-        else:
-            self.graphsymbol = graphsymbol
+        self.graphsymbol = self._u('█') if graphsymbol is None else graphsymbol
         if self._len_noansi(self.graphsymbol) != 1:
             raise Exception('Bad graphsymbol length, must be 1',
                             self._len_noansi(self.graphsymbol))
@@ -85,17 +82,16 @@ class Pyasciigraph:
                          self._u('G'), self._u('T'), self._u('P'),
                          self._u('E'), self._u('Z'), self._u('Y')]
 
-        if human_readable == 'si':
-            self.divider = 1000
-        elif human_readable == 'cs':
+        if human_readable == 'cs':
             self.divider = 1024
+        elif human_readable == 'si':
+            self.divider = 1000
         else:
             self.divider = None
 
     @staticmethod
     def _len_noansi(string):
-        l = len(re.sub('\x1b[^m]*m', '', string))
-        return l
+        return len(re.sub('\x1b[^m]*m', '', string))
 
     def _trans_hr(self, value):
 
@@ -114,30 +110,24 @@ class Pyasciigraph:
     def _u(x):
         """Unicode compat helper
         """
-        if sys.version < '3':
-            return x + ''.decode("utf-8")
-        else:
-            return x
+        return x + ''.decode("utf-8") if sys.version < '3' else x
 
     @staticmethod
     def _color_string(string, color):
         """append color to a string + reset to white at the end of the string
         """
-        if color is None:
-            return string
-        else:
-            return color + string + '\033[0m'
+        return string if color is None else color + string + '\033[0m'
 
     def _get_thresholds(self, data):
         """get various info (min, max, width... etc)
         from the data to graph.
         """
-        all_thre = {}
-        all_thre['value_max_length'] = 0
-        all_thre['info_max_length'] = 0
-        all_thre['max_pos_value'] = 0
-        all_thre['min_neg_value'] = 0
-
+        all_thre = {
+            'value_max_length': 0,
+            'info_max_length': 0,
+            'max_pos_value': 0,
+            'min_neg_value': 0,
+        }
         if self.max_value is not None:
             all_thre['max_pos_value'] = self.max_value
 
@@ -162,7 +152,7 @@ class Pyasciigraph:
                     # longer str(value) len ( /!\, value can be negative,
                     # which means that it's not simply len(str(max_value)))
                     if self.multivalue:
-                        totalvalue_len += len("," + self._trans_hr(ivalue))
+                        totalvalue_len += len(f",{self._trans_hr(ivalue)}")
                     else:
                         totalvalue_len = max(totalvalue_len, len(self._trans_hr(ivalue)))
 
@@ -170,7 +160,6 @@ class Pyasciigraph:
                     # remove one comma if multivalues
                     totalvalue_len = totalvalue_len - 1
 
-            # If the item only has one value
             else:
                 totalvalue_len = len(self._trans_hr(value))
                 maxvalue = value
@@ -285,9 +274,8 @@ class Pyasciigraph:
     def _gen_value_string(self, value, min_neg_value, color, start_value_pos, start_info_pos):
         """Generate the value string + padding
         """
-        icount = 0
         if isinstance(value, collections.Iterable) and self.multivalue:
-            for (ivalue, icolor) in value:
+            for icount, (ivalue, icolor) in enumerate(value):
                 if icount == 0:
                     # total_len is needed because the color characters count
                     # with the len() function even when they are not printed to
@@ -296,12 +284,11 @@ class Pyasciigraph:
                     totalvalue = Pyasciigraph._color_string(
                         self._trans_hr(ivalue), icolor)
                 else:
-                    totalvalue_len += len("," + self._trans_hr(ivalue))
+                    totalvalue_len += len(f",{self._trans_hr(ivalue)}")
                     totalvalue += "," + \
-                        Pyasciigraph._color_string(
+                            Pyasciigraph._color_string(
                             self._trans_hr(ivalue),
                             icolor)
-                icount += 1
         elif isinstance(value, collections.Iterable):
             max_value = min_neg_value
             color = None
@@ -319,18 +306,16 @@ class Pyasciigraph:
                 self._trans_hr(value), color)
 
         number_space = start_info_pos -\
-            start_value_pos -\
-            totalvalue_len -\
-            self.separator_length
+                start_value_pos -\
+                totalvalue_len -\
+                self.separator_length
 
         # This must not be negitive, this happens when the string length is
         # larger than the separator length
-        if number_space < 0:
-            number_space = 0
-
+        number_space = max(number_space, 0)
         return  ' ' * number_space + totalvalue +\
-                ' ' * \
-            ((start_info_pos - start_value_pos - totalvalue_len)
+                    ' ' * \
+                ((start_info_pos - start_value_pos - totalvalue_len)
              - number_space)
 
     def _sanitize_string(self, string):
@@ -340,49 +325,35 @@ class Pyasciigraph:
         unicode_type = type(Pyasciigraph._u('t'))
         input_type = type(string)
         if input_type is str:
-            if sys.version < '3':
-                info = unicode(string)
-            else:
-                info = string
+            return unicode(string) if sys.version < '3' else string
         elif input_type is unicode_type:
-            info = string
+            return string
         elif input_type is int or input_type is float:
-            if sys.version < '3':
-                info = unicode(string)
-            else:
-                info = str(string)
+            return unicode(string) if sys.version < '3' else str(string)
         else:
-            info = str(string)
-        return info
+            return str(string)
 
     def _sanitize_value(self, value):
         """try to values to UTF-8
         """
-        if isinstance(value, collections.Iterable):
-            newcollection = []
-            for i in value:
-                if len(i) == 1:
-                    newcollection.append((i[0], None))
-                elif len(i) >= 2:
-                    newcollection.append((i[0], i[1]))
-            return newcollection
-        else:
+        if not isinstance(value, collections.Iterable):
             return value
+        newcollection = []
+        for i in value:
+            if len(i) == 1:
+                newcollection.append((i[0], None))
+            elif len(i) >= 2:
+                newcollection.append((i[0], i[1]))
+        return newcollection
 
     def _sanitize_data(self, data):
         ret = []
         for item in data:
             if (len(item) == 2):
-                if isinstance(item[1], collections.Iterable):
-                    ret.append(
-                        (self._sanitize_string(item[0]),
-                         self._sanitize_value(item[1]),
-                         None))
-                else:
-                    ret.append(
-                        (self._sanitize_string(item[0]),
-                         self._sanitize_value(item[1]),
-                         None))
+                ret.append(
+                    (self._sanitize_string(item[0]),
+                     self._sanitize_value(item[1]),
+                     None))
             if (len(item) == 3):
                 ret.append(
                     (self._sanitize_string(item[0]),
@@ -404,7 +375,7 @@ class Pyasciigraph:
         san_data = self._sanitize_data(data)
         all_thre = self._get_thresholds(san_data)
 
-        if not label is None:
+        if label is not None:
             san_label = self._sanitize_string(label)
             label_len = self._len_noansi(san_label)
         else:
@@ -413,39 +384,37 @@ class Pyasciigraph:
         real_line_length = max(self.line_length, label_len)
 
         min_line_length = self.min_graph_length +\
-            2 * self.separator_length +\
-            all_thre['value_max_length'] +\
-            all_thre['info_max_length']
+                2 * self.separator_length +\
+                all_thre['value_max_length'] +\
+                all_thre['info_max_length']
 
         if min_line_length < real_line_length:
             # calcul of where to start info
             start_info_pos = self.line_length -\
-                all_thre['info_max_length']
+                    all_thre['info_max_length']
             # calcul of where to start value
             start_value_pos = start_info_pos -\
-                self.separator_length -\
-                all_thre['value_max_length']
+                    self.separator_length -\
+                    all_thre['value_max_length']
             # calcul of where to end graph
             graph_length = start_value_pos -\
-                self.separator_length
+                    self.separator_length
         else:
             # calcul of where to start value
             start_value_pos = self.min_graph_length +\
-                self.separator_length
+                    self.separator_length
             # calcul of where to start info
             start_info_pos = start_value_pos +\
-                all_thre['value_max_length'] +\
-                self.separator_length
+                    all_thre['value_max_length'] +\
+                    self.separator_length
             # calcul of where to end graph
             graph_length = start_value_pos -\
-                self.separator_length
+                    self.separator_length
             # calcul of the real line length
             real_line_length = min_line_length
 
-        if not label is None:
-            result.append(san_label)
-            result.append(Pyasciigraph._u(self.titlebar) * real_line_length)
-
+        if label is not None:
+            result.extend((san_label, Pyasciigraph._u(self.titlebar) * real_line_length))
         header_line = (Pyasciigraph._u(" ") * graph_length) + "count"
         header_line += Pyasciigraph._u(" ") * (start_info_pos - len(header_line)) + "bin"
 

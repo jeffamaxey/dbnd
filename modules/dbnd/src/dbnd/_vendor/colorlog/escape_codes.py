@@ -79,19 +79,19 @@ escape_codes_background = {
 
 # Foreground without prefix
 for name, code in escape_codes_foreground.items():
-    escape_codes["%s" % name] = esc(code)
-    escape_codes["bold_%s" % name] = esc(1, code)
-    escape_codes["thin_%s" % name] = esc(2, code)
+    escape_codes[f"{name}"] = esc(code)
+    escape_codes[f"bold_{name}"] = esc(1, code)
+    escape_codes[f"thin_{name}"] = esc(2, code)
 
 # Foreground with fg_ prefix
 for name, code in escape_codes_foreground.items():
-    escape_codes["fg_%s" % name] = esc(code)
-    escape_codes["fg_bold_%s" % name] = esc(1, code)
-    escape_codes["fg_thin_%s" % name] = esc(2, code)
+    escape_codes[f"fg_{name}"] = esc(code)
+    escape_codes[f"fg_bold_{name}"] = esc(1, code)
+    escape_codes[f"fg_thin_{name}"] = esc(2, code)
 
 # Background with bg_ prefix
 for name, code in escape_codes_background.items():
-    escape_codes["bg_%s" % name] = esc(code)
+    escape_codes[f"bg_{name}"] = esc(code)
 
 # 256 colour support
 for code in range(256):

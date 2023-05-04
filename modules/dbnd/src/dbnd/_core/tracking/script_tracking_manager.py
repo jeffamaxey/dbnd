@@ -122,7 +122,9 @@ def _build_inline_root_task(root_task_name):
     )
 
     root_task.ctrl.task_repr.task_command_line = list2cmdline(sys.argv)
-    root_task.ctrl.task_repr.task_functional_call = "bash_cmd(args=%s)" % repr(sys.argv)
+    root_task.ctrl.task_repr.task_functional_call = (
+        f"bash_cmd(args={repr(sys.argv)})"
+    )
 
     return root_task
 
@@ -205,13 +207,10 @@ class _DbndScriptTrackingManager(object):
             return
 
         dag_tags = getattr(dag, "tags", [])
-        project_name = get_project_name_from_airflow_tags(dag_tags)
-        airflow_user = airflow_context.context["dag"].owner
-
-        if project_name:
+        if project_name := get_project_name_from_airflow_tags(dag_tags):
             self._run.project_name = project_name
 
-        if airflow_user:
+        if airflow_user := airflow_context.context["dag"].owner:
             self._run.context.task_run_env.user = airflow_user
 
         if airflow_context.is_subdag:
@@ -475,9 +474,11 @@ def dbnd_tracking(job_name=None, run_name=None, project_name=None, conf=None):
         conf: Configuration dict with values for Databand configurations
     """
     try:
-        tr = dbnd_tracking_start(
-            job_name=job_name, run_name=run_name, project_name=project_name, conf=conf
+        yield dbnd_tracking_start(
+            job_name=job_name,
+            run_name=run_name,
+            project_name=project_name,
+            conf=conf,
         )
-        yield tr
     finally:
         dbnd_tracking_stop()

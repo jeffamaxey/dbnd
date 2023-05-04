@@ -14,11 +14,8 @@ def calculate_path(task, name, path_pattern, output_ext="", is_dir=False):
     # path_vars = [str(v) if v is not None else "" for v in task.get_vars()]
     path_vars = task.get_template_vars()
 
-    sep = "/"
-
     root = no_trailing_slash(str(task.get_root()))
-    if windows_drive_re.match(root):
-        sep = os.sep
+    sep = os.sep if windows_drive_re.match(root) else "/"
     task_env = task.task_env
     path = path_pattern.format(
         root=root,

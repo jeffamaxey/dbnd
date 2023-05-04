@@ -44,7 +44,7 @@ def track_functions(*args):
         try:
             _track_function(arg)
         except Exception:
-            logger.exception("Failed to track %s" % arg)
+            logger.exception(f"Failed to track {arg}")
 
 
 def _is_module(obj):
@@ -65,7 +65,7 @@ def track_module_functions(module):
         module_functions = [i for i in module_objects if _is_module_function(i, module)]
         track_functions(*module_functions)
     except Exception:
-        logger.exception("Failed to track %s" % module)
+        logger.exception(f"Failed to track {module}")
 
 
 def track_modules(*args):
@@ -78,7 +78,7 @@ def track_modules(*args):
         try:
             track_module_functions(arg)
         except Exception:
-            logger.exception("Failed to track %s" % arg)
+            logger.exception(f"Failed to track {arg}")
 
 
 def _is_module_function(function, module):
@@ -86,10 +86,11 @@ def _is_module_function(function, module):
         if not _is_function(function):
             return False
 
-        if not hasattr(function, "__globals__"):
-            return False
-
-        return function.__globals__ is module.__dict__
+        return (
+            function.__globals__ is module.__dict__
+            if hasattr(function, "__globals__")
+            else False
+        )
     except Exception:
-        logger.exception("Failed to track %s" % function)
+        logger.exception(f"Failed to track {function}")
         return False

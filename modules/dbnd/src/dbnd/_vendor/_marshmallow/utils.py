@@ -123,11 +123,7 @@ def to_marshallable_type(obj, field_names=None):
 
     if isinstance(obj, types.GeneratorType):
         return list(obj)
-    if field_names:
-        # exclude field names that aren't actual attributes of the object
-        attrs = set(dir(obj)) & set(field_names)
-    else:
-        attrs = set(dir(obj))
+    attrs = set(dir(obj)) & set(field_names) if field_names else set(dir(obj))
     return dict([(attr, getattr(obj, attr, None)) for attr in attrs
                   if not attr.startswith("__") and not attr.endswith("__")])
 
@@ -218,10 +214,11 @@ def rfcformat(dt, localtime=False):
         timezone instead of UTC, displaying the proper offset,
         e.g. "Sun, 10 Nov 2013 08:23:45 -0600"
     """
-    if not localtime:
-        return formatdate(timegm(dt.utctimetuple()))
-    else:
-        return local_rfcformat(dt)
+    return (
+        local_rfcformat(dt)
+        if localtime
+        else formatdate(timegm(dt.utctimetuple()))
+    )
 
 
 # From Django
@@ -239,10 +236,7 @@ def isoformat(dt, localtime=False, *args, **kwargs):
     if localtime and dt.tzinfo is not None:
         localized = dt
     else:
-        if dt.tzinfo is None:
-            localized = UTC.localize(dt)
-        else:
-            localized = dt.astimezone(UTC)
+        localized = UTC.localize(dt) if dt.tzinfo is None else dt.astimezone(UTC)
     return localized.isoformat(*args, **kwargs)
 
 
@@ -262,13 +256,11 @@ def from_rfc(datestring, use_dateutil=True):
 
     https://stackoverflow.com/questions/885015/how-to-parse-a-rfc-2822-date-time-into-a-python-datetime
     """
-    # Use dateutil's parser if possible
     if dateutil_available and use_dateutil:
         return parser.parse(datestring)
-    else:
-        parsed = parsedate(datestring)  # as a tuple
-        timestamp = time.mktime(parsed)
-        return datetime.datetime.fromtimestamp(timestamp)
+    parsed = parsedate(datestring)  # as a tuple
+    timestamp = time.mktime(parsed)
+    return datetime.datetime.fromtimestamp(timestamp)
 
 
 def from_iso(datestring, use_dateutil=True):
@@ -292,12 +284,8 @@ def from_iso_time(timestring, use_dateutil=True):
     """
     if dateutil_available and use_dateutil:
         return parser.parse(timestring).time()
-    else:
-        if len(timestring) > 8:  # has microseconds
-            fmt = '%H:%M:%S.%f'
-        else:
-            fmt = '%H:%M:%S'
-        return datetime.datetime.strptime(timestring, fmt).time()
+    fmt = '%H:%M:%S.%f' if len(timestring) > 8 else '%H:%M:%S'
+    return datetime.datetime.strptime(timestring, fmt).time()
 
 def from_iso_date(datestring, use_dateutil=True):
     if dateutil_available and use_dateutil:

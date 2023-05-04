@@ -232,7 +232,6 @@ def cmd_run(
     main_switches = cleanup_empty_switches(main_switches)
 
     _sets = list(_sets)
-    _sets_config = list(_sets_config)
     _sets_root = list(_sets_root)
 
     root_task_config = {}
@@ -254,7 +253,7 @@ def cmd_run(
     # --set, --set-config
     if _sets:
         cmd_line_config.update(_parse_cli(_sets, source="--set"))
-    if _sets_config:
+    if _sets_config := list(_sets_config):
         cmd_line_config.update(_parse_cli(_sets_config, source="--set-config"))
     if _extend:
         cmd_line_config.update(
@@ -307,11 +306,7 @@ def cmd_run(
         tasks = task_registry.list_dbnd_task_classes()
         completer.refresh(tasks)
 
-    # bootstrap and modules are loaded, we can load the task
-    task_cls = None
-    if task_name:
-        task_cls = task_registry.get_task_cls(task_name)
-
+    task_cls = task_registry.get_task_cls(task_name) if task_name else None
     if not task_name:
         print_help(ctx, None)
         return
@@ -320,9 +315,9 @@ def cmd_run(
         print_help(ctx, task_cls)
         return
 
-    with tracking_mode_context(tracking=False), new_dbnd_context(
-        name="run"
-    ) as context:  # type: DatabandContext
+    with (tracking_mode_context(tracking=False), new_dbnd_context(
+            name="run"
+        ) as context):  # type: DatabandContext
         if context.settings.system.describe:
             # we want to print describe without triggering real run
             logger.info("Building main task '%s'", task_name)
@@ -331,7 +326,7 @@ def cmd_run(
             # currently there is bug with the click version we have when using python 2
             # so we don't use the click.echo function
             # https://github.com/pallets/click/issues/564
-            print("Task %s has been described!" % task_name)
+            print(f"Task {task_name} has been described!")
             return root_task
         return context.dbnd_run_task(
             task_or_task_name=task_name,
@@ -368,7 +363,7 @@ def print_help(ctx, task_cls):
                 continue
 
             param_help = _help(param_obj.description)
-            dl.append(("-r " + param_name, param_help))
+            dl.append((f"-r {param_name}", param_help))
 
         with formatter.section("Task"):
             formatter.write_dl(dl)
@@ -397,7 +392,4 @@ def _filter_none(**kwargs):
 
 
 def _nullable_flag(flag):
-    if flag is None:
-        return None
-
-    return bool(flag)
+    return None if flag is None else bool(flag)

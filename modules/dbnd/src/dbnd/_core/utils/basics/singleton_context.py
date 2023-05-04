@@ -28,8 +28,7 @@ class SingletonContext(object):
         """Singleton getter"""
         if not cls._instance:
             raise DatabandSystemError(
-                "%s is not set, call .global_instance or .try_instance first"
-                % cls.__name__
+                f"{cls.__name__} is not set, call .global_instance or .try_instance first"
             )
 
         return cls._instance
@@ -66,7 +65,7 @@ class SingletonContext(object):
 
     @classmethod
     @contextmanager
-    def new_context(cls, *args, **kwargs):  # type: ('T', *Any, **Any)-> 'T'
+    def new_context(cls, *args, **kwargs):    # type: ('T', *Any, **Any)-> 'T'
         """
         Meant to be used as a context manager.
         """
@@ -74,13 +73,10 @@ class SingletonContext(object):
         context = kwargs.pop("_context", None)
 
         orig_value = cls._instance
-        if orig_value is not None:
-            if not allow_override:
-                raise DatabandSystemError(
-                    "You are trying to create new %s out of existing context '%s', "
-                    "are you sure you are allowed to do that? "
-                    % (cls.__name__, cls._instance)
-                )
+        if orig_value is not None and not allow_override:
+            raise DatabandSystemError(
+                f"You are trying to create new {cls.__name__} out of existing context '{cls._instance}', are you sure you are allowed to do that? "
+            )
         if context is None:
             try:
                 context = cls(*args, **kwargs)

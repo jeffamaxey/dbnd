@@ -20,10 +20,7 @@ class ValidationError(MarshmallowError):
     """
 
     def __init__(self, message, field_names=None, fields=None, data=None, **kwargs):
-        if not isinstance(message, dict) and not isinstance(message, list):
-            messages = [message]
-        else:
-            messages = message
+        messages = message if isinstance(message, (dict, list)) else [message]
         #: String, list, or dictionary of error messages.
         #: If a `dict`, the keys will be field names and the values will be lists of
         #: messages.
@@ -45,7 +42,7 @@ class ValidationError(MarshmallowError):
             return self.messages
         if len(self.field_names) == 0:
             return {no_field_name: self.messages}
-        return dict((name, self.messages) for name in self.field_names)
+        return {name: self.messages for name in self.field_names}
 
 class RegistryError(NameError):
     """Raised when an invalid operation is performed on the serializer

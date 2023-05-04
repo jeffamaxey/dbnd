@@ -14,7 +14,6 @@ class ParametersMapper(object):
         self.custom_parameters[value_type] = parameter
 
     def get_parameter(self, value_type):
-        custom_parameter = self.custom_parameters.get(value_type)
-        if custom_parameter:
+        if custom_parameter := self.custom_parameters.get(value_type):
             return custom_parameter
         return PARAMETER_FACTORY.modify(value_type=value_type)

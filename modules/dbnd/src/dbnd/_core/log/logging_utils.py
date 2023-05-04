@@ -39,9 +39,7 @@ def symlink_latest_log(log_file, latest_log=None):
         else:
             os.symlink(log_file, latest_log)
     except OSError:
-        logging.warning(
-            "OSError while attempting to symlink " "the latest %s" % latest_log
-        )
+        logging.warning(f"OSError while attempting to symlink the latest {latest_log}")
 
 
 def setup_logs_dir(log_dir):
@@ -204,10 +202,7 @@ class TaskContextFilter(logging.Filter):
 
 
 def find_handler(logger, handler_name):
-    for h in logger.handlers:
-        if h.name == handler_name:
-            return h
-    return None
+    return next((h for h in logger.handlers if h.name == handler_name), None)
 
 
 SENTRY_TOUCHED = False
@@ -226,9 +221,7 @@ def try_init_sentry():
 
     logging_config = LoggingConfig.from_databand_context()
 
-    sentry_url = logging_config.sentry_url
-
-    if sentry_url:
+    if sentry_url := logging_config.sentry_url:
         try:
             import sentry_sdk
         except ImportError:
@@ -272,4 +265,4 @@ class PrefixLoggerAdapter(logging.LoggerAdapter):
         self.prefix = prefix
 
     def process(self, msg, kwargs):
-        return "[%s] %s" % (self.prefix, msg), kwargs
+        return f"[{self.prefix}] {msg}", kwargs

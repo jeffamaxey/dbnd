@@ -13,10 +13,7 @@ def inverse_dict(x):
 
 def list_to_tuple(x):
     """Make tuples out of lists and sets to allow hashing"""
-    if isinstance(x, list) or isinstance(x, set):
-        return tuple(x)
-    else:
-        return x
+    return tuple(x) if isinstance(x, (list, set)) else x
 
 
 class MappingCombineStrategy(object):
@@ -55,9 +52,7 @@ def split_list(func, iter):
 
 
 def list_of_strings(value_list):
-    if not value_list:
-        return []
-    return list(map(str, value_list))
+    return list(map(str, value_list)) if value_list else []
 
 
 def get_object_attrs(cls):

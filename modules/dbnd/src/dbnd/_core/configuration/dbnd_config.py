@@ -53,9 +53,7 @@ class _ConfigLayer(object):
     def get_config_value(self, section, key):
         # type: (str, str)->Optional[ConfigValue]
         section = self.config.get(_lower_config_name(section))
-        if not section:
-            return None
-        return section.get(_lower_config_name(key))
+        return section.get(_lower_config_name(key)) if section else None
 
     def merge_and_create_new_layer(
         self,
@@ -182,9 +180,7 @@ class DbndConfig(object):
         """
 
         if len(sections) == 1:
-            # we have it precalculated
-            config_value = self.get_config_value(sections[0], key)
-            if config_value:
+            if config_value := self.get_config_value(sections[0], key):
                 return [config_value]
             return []
 
@@ -195,11 +191,9 @@ class DbndConfig(object):
         # Example:  ... -> layer.cmdline[MyTask] -> layer.cmdline[Task] -> layer.config[MyTask] -> ...
         while layer:
             for section in sections:
-                # look for the value with highest priority
-                # we are using "row" values from "delta"
-                # we need to take care of priorities
-                config_value = layer.layer_config.get_config_value(section, key)
-                if config_value:
+                if config_value := layer.layer_config.get_config_value(
+                    section, key
+                ):
                     config_value_stack = fold_config_value(
                         stack=config_value_stack, lower=config_value
                     )
@@ -208,8 +202,7 @@ class DbndConfig(object):
 
     def get(self, section, key, default=None, expand_env=True):
 
-        config_value = self.get_config_value(section=section, key=key)
-        if config_value:
+        if config_value := self.get_config_value(section=section, key=key):
             value = config_value.value
             if expand_env:
                 value = expand_env_var(value)
@@ -241,7 +234,7 @@ class DbndConfig(object):
         self.initialized_with_env = True
 
     def __str__(self):
-        return "Config[%s]" % self.config_layer.name
+        return f"Config[{self.config_layer.name}]"
 
     def log_current_config(self, sections=None, as_table=False):
         logger.info(pformat_current_config(self, sections=sections, as_table=as_table))

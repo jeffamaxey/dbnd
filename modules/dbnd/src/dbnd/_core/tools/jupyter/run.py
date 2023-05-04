@@ -3,6 +3,5 @@ def run_task(task):
     from IPython.core.display import HTML
 
     return HTML(
-        'You can review Databand Run <a href="%s" target="_blank" >at this link</a>'
-        % run.run_url
+        f'You can review Databand Run <a href="{run.run_url}" target="_blank" >at this link</a>'
     )

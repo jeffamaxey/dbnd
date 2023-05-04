@@ -81,7 +81,7 @@ class SchemaMeta(type):
     the Schema class's ``class Meta`` options.
     """
 
-    def __new__(mcs, name, bases, attrs):
+    def __new__(cls, name, bases, attrs):
         meta = attrs.get('Meta')
         ordered = getattr(meta, 'ordered', False)
         if not ordered:
@@ -89,14 +89,16 @@ class SchemaMeta(type):
             # Warning: We loop through bases instead of MRO because we don't
             # yet have access to the class object
             # (i.e. can't call super before we have fields)
-            for base_ in bases:
-                if hasattr(base_, 'Meta') and hasattr(base_.Meta, 'ordered'):
-                    ordered = base_.Meta.ordered
-                    break
-            else:
-                ordered = False
+            ordered = next(
+                (
+                    base_.Meta.ordered
+                    for base_ in bases
+                    if hasattr(base_, 'Meta') and hasattr(base_.Meta, 'ordered')
+                ),
+                False,
+            )
         cls_fields = _get_fields(attrs, base.FieldABC, pop=True, ordered=ordered)
-        klass = super(SchemaMeta, mcs).__new__(mcs, name, bases, attrs)
+        klass = super(SchemaMeta, cls).__new__(cls, name, bases, attrs)
         inherited_fields = _get_fields_by_mro(klass, base.FieldABC, ordered=ordered)
 
         # Use getattr rather than attrs['Meta'] so that we get inheritance for free
@@ -111,16 +113,16 @@ class SchemaMeta(type):
 
         dict_cls = OrderedDict if ordered else dict
         # Assign _declared_fields on class
-        klass._declared_fields = mcs.get_declared_fields(
+        klass._declared_fields = cls.get_declared_fields(
             klass=klass,
             cls_fields=cls_fields,
             inherited_fields=inherited_fields,
-            dict_cls=dict_cls
+            dict_cls=dict_cls,
         )
         return klass
 
     @classmethod
-    def get_declared_fields(mcs, klass, cls_fields, inherited_fields, dict_cls):
+    def get_declared_fields(cls, klass, cls_fields, inherited_fields, dict_cls):
         """Returns a dictionary of field_name => `Field` pairs declard on the class.
         This is exposed mainly so that plugins can add additional fields, e.g. fields
         computed from class Meta options.
@@ -729,8 +731,7 @@ class BaseSchema(base.SchemaABC):
             # Remove the child field names from the only option.
             self.only = self.set_class(
                 [field.split('.', 1)[0] for field in self.only])
-        excludes = set(self.opts.exclude) | set(self.exclude)
-        if excludes:
+        if excludes := set(self.opts.exclude) | set(self.exclude):
             # Apply the exclude option to nested fields.
             self.__apply_nested_option('exclude', excludes, 'union')
         if self.exclude:
@@ -753,8 +754,9 @@ class BaseSchema(base.SchemaABC):
         # Apply the nested field options.
         for key, options in iter(nested_options.items()):
             new_options = self.set_class(options)
-            original_options = getattr(self.declared_fields[key], option_name, ())
-            if original_options:
+            if original_options := getattr(
+                self.declared_fields[key], option_name, ()
+            ):
                 if set_operation == 'union':
                     new_options |= self.set_class(original_options)
                 if set_operation == 'intersection':
@@ -779,9 +781,7 @@ class BaseSchema(base.SchemaABC):
         else:
             field_names = self.set_class(self.declared_fields.keys())
 
-        # If "exclude" option or param is specified, remove those fields
-        excludes = set(self.opts.exclude) | set(self.exclude)
-        if excludes:
+        if excludes := set(self.opts.exclude) | set(self.exclude):
             field_names = field_names - excludes
         ret = self.__filter_fields(field_names, obj, many=many)
         # Set parents
@@ -840,7 +840,7 @@ class BaseSchema(base.SchemaABC):
                 else:
                     obj_prototype = next(iter(obj))
             except (StopIteration, IndexError):  # Nothing to serialize
-                return dict((k, v) for k, v in self.declared_fields.items() if k in field_names)
+                return {k: v for k, v in self.declared_fields.items() if k in field_names}
             obj = obj_prototype
         ret = self.dict_class()
         for key in field_names:
@@ -949,7 +949,7 @@ class BaseSchema(base.SchemaABC):
                                                 item, original_data, self.fields, many=many,
                                                 index=idx, pass_original=pass_original)
                     except ValidationError as err:
-                        errors.update(err.messages)
+                        errors |= err.messages
             else:
                 try:
                     unmarshal.run_validator(validator,
@@ -970,21 +970,21 @@ class BaseSchema(base.SchemaABC):
             pass_original = processor_kwargs.get('pass_original', False)
 
             if pass_many:
-                if pass_original:
-                    data = utils.if_none(processor(data, many, original_data), data)
-                else:
-                    data = utils.if_none(processor(data, many), data)
+                data = (
+                    utils.if_none(processor(data, many, original_data), data)
+                    if pass_original
+                    else utils.if_none(processor(data, many), data)
+                )
             elif many:
                 if pass_original:
                     data = [utils.if_none(processor(item, original_data), item)
                             for item in data]
                 else:
                     data = [utils.if_none(processor(item), item) for item in data]
+            elif pass_original:
+                data = utils.if_none(processor(data, original_data), data)
             else:
-                if pass_original:
-                    data = utils.if_none(processor(data, original_data), data)
-                else:
-                    data = utils.if_none(processor(data), data)
+                data = utils.if_none(processor(data), data)
         return data
 
 

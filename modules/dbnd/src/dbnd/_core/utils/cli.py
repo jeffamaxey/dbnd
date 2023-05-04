@@ -21,7 +21,7 @@ def required_mutually_exclusive_options(*options):
         ]
         options_names = {option.name for option in options_obj}
         for option in options_obj:
-            current_help = "" if option.help is None else option.help + " "
+            current_help = "" if option.help is None else f"{option.help} "
             others = list(options_names - {option.name})
             added_msg = "**mutually excluded with {others}".format(others=others)
             option.help = current_help + added_msg
@@ -34,7 +34,7 @@ def required_mutually_exclusive_options(*options):
             if not only_one(*relevant_options):
                 raise click.UsageError(
                     "Illegal usage: `at least one, and only one of the options [{options}] is required` ".format(
-                        options=",".join("--" + op_name for op_name in options)
+                        options=",".join(f"--{op_name}" for op_name in options)
                     )
                 )
             func(**kwargs)
@@ -56,7 +56,7 @@ def options_dependency(root, *dependents):
             option for option in func.__click_params__ if option.name in dependents
         ]
         for option in options_obj:
-            current_help = "" if option.help is None else option.help + " "
+            current_help = "" if option.help is None else f"{option.help} "
             added_msg = "**depend on {root} option".format(root=root)
             option.help = current_help + added_msg
 

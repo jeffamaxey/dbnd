@@ -49,7 +49,8 @@ class TaskRelations(TaskSubCtrl):
             self.task_inputs = self.initialize_required()
         except Exception:
             logger.warning(
-                "Failed to calculate relationships for %s" % self.task_id, exc_info=True
+                f"Failed to calculate relationships for {self.task_id}",
+                exc_info=True,
             )
             self.task_inputs = {}
             if not self.task.task_is_dynamic:
@@ -94,9 +95,7 @@ class TaskRelations(TaskSubCtrl):
             params=params,
             extra=task.task_definition.task_signature_extra,
         )
-        task.task_id = "{}__{}".format(
-            task.task_name, task.task_signature_obj.signature
-        )
+        task.task_id = f"{task.task_name}__{task.task_signature_obj.signature}"
 
         # for airflow operator task handling:
         airflow_task_id_p = self.params.get_param("airflow_task_id")
@@ -106,8 +105,7 @@ class TaskRelations(TaskSubCtrl):
         # STEP 3  - now let update outputs
         self.initialize_outputs()
 
-        outputs_sig = self._get_outputs_to_sign()
-        if outputs_sig:
+        if outputs_sig := self._get_outputs_to_sign():
             sig = build_signature_from_values("task_outputs", outputs_sig)
             task.task_outputs_signature_obj = sig
         else:
@@ -133,16 +131,14 @@ class TaskRelations(TaskSubCtrl):
 
                 band_context.append(get_databand_op_catcher_dag())
 
-            original_param_values = []
-            for param_value in self.task.task_params.get_param_values(
-                ParameterFilters.OUTPUTS
-            ):
-                if param_value.name == "task_band" or isinstance(
-                    param_value.parameter, FuncResultParameter
-                ):
-                    continue
-                original_param_values.append((param_value, param_value.value))
-
+            original_param_values = [
+                (param_value, param_value.value)
+                for param_value in self.task.task_params.get_param_values(
+                    ParameterFilters.OUTPUTS
+                )
+                if param_value.name != "task_band"
+                and not isinstance(param_value.parameter, FuncResultParameter)
+            ]
             with nested(*band_context):
                 band = self.task.band()
                 # this one would be normalized
@@ -182,7 +178,7 @@ class TaskRelations(TaskSubCtrl):
         except Exception as ex:
             logger.warning(
                 self.visualiser.banner(
-                    msg="Failed to run %s" % _band_call_str(self.task),
+                    msg=f"Failed to run {_band_call_str(self.task)}",
                     color="red",
                     exc_info=sys.exc_info(),
                 )
@@ -273,12 +269,10 @@ class TaskRelations(TaskSubCtrl):
             value = traverse_and_set_target(value, p._target_source(self.task))
             outputs[_section(p)][p.name] = value
 
-        custom_outputs = self.task._output()
-        if custom_outputs:
-            if outputs["user"]:
+        if outputs["user"]:
+            if custom_outputs := self.task._output():
                 warnings.warn(
-                    "Task %s has custom outputs in _output() function, all other outputs will be removed: %s"
-                    % (task, outputs["user"]),
+                    f'Task {task} has custom outputs in _output() function, all other outputs will be removed: {outputs["user"]}',
                     stacklevel=2,
                 )
                 outputs["user"] = custom_outputs
@@ -319,9 +313,7 @@ def _find_target(target):
     if target is None:
         return target
 
-    if isinstance(target, Target):
-        return target
-    return None
+    return target if isinstance(target, Target) else None
 
 
 def traverse_and_set_target(target, target_source):
@@ -336,7 +328,7 @@ def __set_target(target, target_source):
 
     if not isinstance(target, Target):
         raise DatabandSystemError(
-            "Expected target object, got '%s' : %s" % (type(target), target)
+            f"Expected target object, got '{type(target)}' : {target}"
         )
     if not target.source:
         target.source = target_source
@@ -351,4 +343,4 @@ def as_task(task_or_result):
         return task_or_result.source_task
     if isinstance(task_or_result, Task):
         return task_or_result
-    raise DatabandSystemError("Can not extract task from %s" % task_or_result)
+    raise DatabandSystemError(f"Can not extract task from {task_or_result}")

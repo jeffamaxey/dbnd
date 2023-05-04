@@ -45,8 +45,9 @@ def register(classname, cls):
     # If the class is already registered; need to check if the entries are
     # in the same module as cls to avoid having multiple instances of the same
     # class in the registry
-    if classname in _registry and not \
-            any(each.__module__ == module for each in _registry[classname]):
+    if classname in _registry and all(
+        each.__module__ != module for each in _registry[classname]
+    ):
         _registry[classname].append(cls)
     elif classname not in _registry:
         _registry[classname] = [cls]
@@ -70,11 +71,10 @@ def get_class(classname, all=False):
     except KeyError:
         raise RegistryError('Class with name {0!r} was not found. You may need '
             'to import the class.'.format(classname))
-    if len(classes) > 1:
-        if all:
-            return _registry[classname]
-        raise RegistryError('Multiple classes with name {0!r} '
-            'were found. Please use the full, '
-            'module-qualified path.'.format(classname))
-    else:
+    if len(classes) <= 1:
         return _registry[classname][0]
+    if all:
+        return _registry[classname]
+    raise RegistryError('Multiple classes with name {0!r} '
+        'were found. Please use the full, '
+        'module-qualified path.'.format(classname))

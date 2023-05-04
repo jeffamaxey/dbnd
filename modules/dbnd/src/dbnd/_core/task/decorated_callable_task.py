@@ -25,14 +25,12 @@ class _DecoratedCallableTask(Task):
         # usually it's called from from task.run/task.band
         extra_kwargs = extra_kwargs or {}
         spec = self.task_decorator.get_callable_spec()
-        invoke_kwargs = {}
-        for name in spec.args:
-            # if there is no parameter - it was disabled at TaskDefinition building stage
-            if self._params.get_param(name) is None:
-                continue
-            invoke_kwargs[name] = getattr(self, name)
-
-        invoke_kwargs.update(extra_kwargs)
+        invoke_kwargs = {
+            name: getattr(self, name)
+            for name in spec.args
+            if self._params.get_param(name) is not None
+        }
+        invoke_kwargs |= extra_kwargs
 
         if not self._dbnd_call_state:
             from dbnd._core.task_build.task_cls__call_state import TaskCallState

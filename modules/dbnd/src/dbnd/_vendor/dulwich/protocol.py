@@ -106,14 +106,12 @@ def capability_symref(from_ref, to_ref):
 
 
 def extract_capability_names(capabilities):
-    return set(parse_capability(c)[0] for c in capabilities)
+    return {parse_capability(c)[0] for c in capabilities}
 
 
 def parse_capability(capability):
     parts = capability.split(b"=", 1)
-    if len(parts) == 1:
-        return (parts[0], None)
-    return tuple(parts)
+    return (parts[0], None) if len(parts) == 1 else tuple(parts)
 
 
 def symref_capabilities(symrefs):
@@ -253,10 +251,8 @@ class Protocol(object):
         :return: Yields each line of data up to but not including the next
             flush-pkt.
         """
-        pkt = self.read_pkt_line()
-        while pkt:
+        while pkt := self.read_pkt_line():
             yield pkt
-            pkt = self.read_pkt_line()
 
     def write_pkt_line(self, line):
         """Sends a pkt-line to the remote git process.
@@ -513,8 +509,7 @@ class BufferedPktLineWriter(object):
 
     def flush(self):
         """Flush all data from the buffer."""
-        data = self._wbuf.getvalue()
-        if data:
+        if data := self._wbuf.getvalue():
             self._write(data)
         self._len = 0
         self._wbuf = BytesIO()

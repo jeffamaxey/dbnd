@@ -71,7 +71,7 @@ def extend(value):
         @task(task_config={KubernetesConfig.labels: extend({"owner": "Joey"} )})
         ...
     """
-    if not (isinstance(value, list) or isinstance(value, dict)):
+    if not (isinstance(value, (list, dict))):
         raise ValueError(
             "extend is not supported for type {value_type}.\n help: consider using list or dict instead of {value}".format(
                 value_type=type(value), value=value

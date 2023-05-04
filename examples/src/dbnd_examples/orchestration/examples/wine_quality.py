@@ -114,7 +114,7 @@ def validate_model(model: ElasticNet, validation_dataset: DataFrame) -> str:
     log_metric("mae", rmse)
     log_metric("r2", r2)
 
-    return "%s,%s,%s" % (rmse, mae, r2)
+    return f"{rmse},{mae},{r2}"
 
 
 @pipeline(result=("model", "validation"))

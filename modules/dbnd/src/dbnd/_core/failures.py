@@ -64,12 +64,10 @@ def get_databand_error_message(ex, args=None, sys_exit=True):
 
     extra_msg_lines = []
 
-    nested_exceptions = nested_exceptions_str(ex)
-    if nested_exceptions:
+    if nested_exceptions := nested_exceptions_str(ex):
         extra_msg_lines.append("Caused by: \n%s\n" % indent(nested_exceptions, "\t"))
 
-    help_msg = get_help_msg(ex)
-    if help_msg:
+    if help_msg := get_help_msg(ex):
         extra_msg_lines.append(" Help: \n%s\n" % indent(help_msg, "\t"))
 
     user_frame_info_str = get_user_frame_info_str(ex)

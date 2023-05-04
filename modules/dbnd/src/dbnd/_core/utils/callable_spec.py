@@ -55,11 +55,7 @@ class CallableSpec(object):
 def build_callable_spec(class_or_func):
     # type: (callable ) -> CallableSpec
     is_class = inspect.isclass(class_or_func)
-    if is_class:
-        f = class_or_func.__init__
-    else:
-        f = class_or_func
-
+    f = class_or_func.__init__ if is_class else class_or_func
     if six.PY3:
         # python 3 https://docs.python.org/3/library/inspect.html#inspect.getfullargspec
         f_spec = inspect.getfullargspec(f)
@@ -117,8 +113,7 @@ def guess_func_arg_value_type(f_spec, name, default_value):
         return r.get_value_type_of_type(annotation)
 
     doc_annotation = f_spec.doc_annotations.get(name)
-    t = r.get_value_type_of_type_str(doc_annotation)
-    if t:
+    if t := r.get_value_type_of_type_str(doc_annotation):
         return t
 
     if is_defined(default_value):
@@ -140,33 +135,30 @@ def guess_func_return_type(f_spec):
         # for -> (int,DataFrame)
         if isinstance(return_func_spec, tuple):
             return_func_spec = [
-                ("result_%s" % idx, ret_part_type)
+                (f"result_{idx}", ret_part_type)
                 for idx, ret_part_type in enumerate(return_func_spec, start=1)
             ]
-        # easy way to check that it's NamedTuple
         elif hasattr(return_func_spec, "_field_types"):
             return_func_spec = list(six.iteritems(return_func_spec._field_types))
-        # case of named tuple
         elif is_Tuple(return_func_spec):
             # for -> Tuple[int,DataFrame]
             return_func_spec = get_Tuple_params(return_func_spec)
             return_func_spec = [
-                ("result_%s" % idx, ret_part_type)
+                (f"result_{idx}", ret_part_type)
                 for idx, ret_part_type in enumerate(return_func_spec, start=1)
             ]
 
-        if isinstance(return_func_spec, list):
-            result = []
-            for field_name, ret_part_type in return_func_spec:
-                field_value_type = r.get_value_type_of_type(
-                    ret_part_type, inline_value_type=True
-                )
-                result.append((field_name, field_value_type))
-            return result
-        else:
+        if not isinstance(return_func_spec, list):
             # fallback to regular parsing
             return r.get_value_type_of_type(return_func_spec, inline_value_type=True)
 
+        result = []
+        for field_name, ret_part_type in return_func_spec:
+            field_value_type = r.get_value_type_of_type(
+                ret_part_type, inline_value_type=True
+            )
+            result.append((field_name, field_value_type))
+        return result
     doc_annotation = f_spec.doc_annotations.get(return_key, NOTHING)
     if is_defined(doc_annotation):
         if doc_annotation == "None":
@@ -180,7 +172,7 @@ def guess_func_return_type(f_spec):
         result = []
         for idx, ret_part_type in enumerate(doc_annotation, start=1):
             field_value_type = r.get_value_type_of_type_str(ret_part_type)
-            result.append(("result_%s" % idx, field_value_type))
+            result.append((f"result_{idx}", field_value_type))
         return result
     return NOTHING
 
@@ -197,7 +189,7 @@ def args_to_kwargs(arg_names, args, kwargs):
     # convert args to kwargs
     zipped = dict(zip(arg_names, args))
     # only if none of zipped keys passed in kwargs
-    if all(k not in kwargs for k in zipped.keys()):
+    if all(k not in kwargs for k in zipped):
         n = len(zipped)
         args = args[n:]
         kwargs = kwargs.copy()

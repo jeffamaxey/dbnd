@@ -61,7 +61,7 @@ class _BaseTask(object):
         self.task_name = task_name  # type: str
 
         # miscellaneous
-        self.task_id = "{}__{}".format(task_name, task_signature_obj.signature)
+        self.task_id = f"{task_name}__{task_signature_obj.signature}"
         self.task_type = self._conf__task_type_name
 
         self.task_signature_obj = task_signature_obj
@@ -85,7 +85,7 @@ class _BaseTask(object):
         return hash(self.task_id)
 
     def __repr__(self):
-        return "%s" % self.task_id
+        return f"{self.task_id}"
 
     def __str__(self):
         return self.task_id
@@ -93,7 +93,7 @@ class _BaseTask(object):
     @property
     def friendly_task_name(self):
         if self.task_name != self.task_family:
-            return "%s[%s]" % (self.task_name, self.task_family)
+            return f"{self.task_name}[{self.task_family}]"
         return self.task_name
 
     @property

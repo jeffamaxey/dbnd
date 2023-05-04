@@ -89,10 +89,9 @@ def check_docstrings():
             source = inspect.getsource(obj)
             sourcefile = inspect.getfile(obj)
             if docstring:
-                for error in check_no_epydoc_rst(
+                yield from check_no_epydoc_rst(
                     docstring, fields, sourcefile, objname
-                ):
-                    yield error
+                )
             for error in conv_checker.check_source(source, sourcefile):
                 code = getattr(error, "code", None)
                 if code in checked_codes:
@@ -100,10 +99,9 @@ def check_docstrings():
         except TypeError as err:  # Usually happens when the object is an "instance" of another object
             sourcefile = inspect.getfile(obj.__class__)
             if docstring:
-                for error in check_no_epydoc_rst(
+                yield from check_no_epydoc_rst(
                     docstring, fields, sourcefile, objname
-                ):
-                    yield error
+                )
                 docstring = '"""{}{}"""'.format(
                     docstring, "\n\t" if len(docstring.splitlines()) > 1 else ""
                 )

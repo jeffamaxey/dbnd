@@ -56,7 +56,7 @@ class TaskRun(object):
 
         # used by all kind of submission controllers
         self.job_name = clean_job_name(self.task_af_id).lower()
-        self.job_id = self.job_name + "_" + str(self.task_run_uid)[:8]
+        self.job_id = f"{self.job_name}_{str(self.task_run_uid)[:8]}"
 
         # custom per task engine , or just use one from global env
         dbnd_local_root = (
@@ -96,7 +96,7 @@ class TaskRun(object):
         self.deploy = TaskSyncCtrl(task_run=self)
         self.sync_local = TaskRunLocalSyncer(task_run=self)
         self.task_tracker_url = self.tracker.task_run_url()
-        self.external_resource_urls = dict()
+        self.external_resource_urls = {}
         self.errors = []
 
         self.is_root = False
@@ -133,10 +133,7 @@ class TaskRun(object):
 
     def _get_log_files(self):
 
-        log_local = None
-        if self.log.local_log_file:
-            log_local = self.log.local_log_file.path
-
+        log_local = self.log.local_log_file.path if self.log.local_log_file else None
         log_remote = None
         if self.log.remote_log_file:
             log_remote = self.log.remote_log_file.path
@@ -204,11 +201,11 @@ class TaskRun(object):
         self.task_run_attempt_uid = get_task_run_attempt_uid_by_task_run(self)
 
         self.attempt_folder = self.task._meta_output.folder(
-            "attempt_%s_%s" % (self.attempt_number, self.task_run_attempt_uid),
+            f"attempt_{self.attempt_number}_{self.task_run_attempt_uid}",
             extension=None,
         )
         self.attempt_folder_local = self.local_task_run_root.folder(
-            "attempt_%s_%s" % (self.attempt_number, self.task_run_attempt_uid),
+            f"attempt_{self.attempt_number}_{self.task_run_attempt_uid}",
             extension=None,
         )
         self.attemp_folder_local_cache = self.attempt_folder_local.folder("cache")
@@ -216,7 +213,7 @@ class TaskRun(object):
         self.log = TaskRunLogManager(task_run=self)
 
     def __repr__(self):
-        return "TaskRun(id=%s, af_id=%s)" % (self.task.task_id, self.task_af_id)
+        return f"TaskRun(id={self.task.task_id}, af_id={self.task_af_id})"
 
 
 class TaskRunUidGen(object):

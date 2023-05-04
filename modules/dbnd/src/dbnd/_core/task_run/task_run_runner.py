@@ -82,7 +82,7 @@ class TaskRunRunner(TaskRunCtrl):
         with self.task_run_execution_context(handle_sigterm=handle_sigterm):
             if run.is_killed():
                 raise friendly_error.task_execution.databand_context_killed(
-                    "task.execute_start of %s" % task
+                    f"task.execute_start of {task}"
                 )
             try:
                 self.task_env.prepare_env()

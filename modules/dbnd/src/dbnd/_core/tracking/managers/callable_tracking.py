@@ -85,9 +85,7 @@ class CallableTrackingManager(object):
             self._call_count += 1
             if self._call_count > self._max_call_count:
                 logger.info(
-                    "Reached maximum tracking limit of {} tasks. Running function regularly.".format(
-                        self._max_call_count
-                    )
+                    f"Reached maximum tracking limit of {self._max_call_count} tasks. Running function regularly."
                 )
                 self._call_as_func = True
         return self._call_as_func
@@ -210,11 +208,8 @@ class CallableTrackingManager(object):
 
 def _handle_tracking_error(msg, func_call=None):
     log_exception_to_server()
-    location = " for %s" % func_call.callable if func_call else ""
-    msg = "Failed during dbnd %s for %s, ignoring, and continue without tracking" % (
-        msg,
-        location,
-    )
+    location = f" for {func_call.callable}" if func_call else ""
+    msg = f"Failed during dbnd {msg} for {location}, ignoring, and continue without tracking"
     if is_verbose():
         logger.warning(msg, exc_info=True)
     else:
@@ -268,9 +263,7 @@ def _log_result(task_run, result):
     try:
         result_param = task_run.task.task_params.get_param_value(RESULT_PARAM)
         if not result_param:
-            logger.debug(
-                "No result params to log for task {}".format(task_run.task_af_id)
-            )
+            logger.debug(f"No result params to log for task {task_run.task_af_id}")
             return
 
         # we now the parameter value is a target because this is an output param

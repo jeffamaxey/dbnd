@@ -40,6 +40,7 @@ LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
 NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 """
+
 from __future__ import print_function
 
 import dis
@@ -79,11 +80,7 @@ _DYNAMIC_CLASS_TRACKER_LOCK = threading.Lock()
 
 PYPY = platform.python_implementation() == "PyPy"
 
-builtin_code_type = None
-if PYPY:
-    # builtin-code objects only exist in pypy
-    builtin_code_type = type(float.__new__.__code__)
-
+builtin_code_type = type(float.__new__.__code__) if PYPY else None
 if sys.version_info[0] < 3:  # pragma: no branch
     from pickle import Pickler
     try:
@@ -274,7 +271,7 @@ def _find_imported_submodules(code, top_level_dependencies):
         if (isinstance(x, types.ModuleType) and
                 hasattr(x, '__package__') and x.__package__):
             # check if the package has any currently loaded sub-imports
-            prefix = x.__name__ + '.'
+            prefix = f'{x.__name__}.'
             # A concurrent thread could mutate sys.modules,
             # make sure we iterate over a copy to avoid exceptions
             for name in list(sys.modules):
@@ -422,10 +419,9 @@ HAVE_ARGUMENT = dis.HAVE_ARGUMENT
 EXTENDED_ARG = dis.EXTENDED_ARG
 
 
-_BUILTIN_TYPE_NAMES = {}
-for k, v in types.__dict__.items():
-    if type(v) is type:
-        _BUILTIN_TYPE_NAMES[v] = k
+_BUILTIN_TYPE_NAMES = {
+    v: k for k, v in types.__dict__.items() if type(v) is type
+}
 
 
 def _builtin_type(name):
@@ -450,10 +446,8 @@ if sys.version_info < (3, 4):  # pragma: no branch
             i += 1
             if op >= HAVE_ARGUMENT:
                 oparg = code[i] + code[i + 1] * 256 + extended_arg
-                extended_arg = 0
                 i += 2
-                if op == EXTENDED_ARG:
-                    extended_arg = oparg * 65536
+                extended_arg = oparg * 65536 if op == EXTENDED_ARG else 0
                 if op in GLOBAL_OPS:
                     yield op, oparg
 
@@ -477,7 +471,7 @@ def _extract_class_dict(cls):
     else:
         inherited_dict = {}
         for base in reversed(cls.__bases__):
-            inherited_dict.update(base.__dict__)
+            inherited_dict |= base.__dict__
     to_remove = []
     for name, value in clsdict.items():
         try:
@@ -507,11 +501,10 @@ class CloudPickler(Pickler):
         try:
             return Pickler.dump(self, obj)
         except RuntimeError as e:
-            if 'recursion' in e.args[0]:
-                msg = """Could not pickle object as excessively deep recursion required."""
-                raise pickle.PicklingError(msg)
-            else:
+            if 'recursion' not in e.args[0]:
                 raise
+            msg = """Could not pickle object as excessively deep recursion required."""
+            raise pickle.PicklingError(msg)
 
     def save_memoryview(self, obj):
         self.save(obj.tobytes())
@@ -614,7 +607,7 @@ class CloudPickler(Pickler):
         EnumMeta metaclass has complex initialization that makes the Enum
         subclasses hold references to their own instances.
         """
-        members = dict((e.name, e.value) for e in obj)
+        members = {e.name: e.value for e in obj}
 
         # Python 2.7 with enum34 can have no qualname:
         qualname = getattr(obj, "__qualname__", None)
@@ -795,12 +788,11 @@ class CloudPickler(Pickler):
         # extract all global ref's
         func_global_refs = _extract_code_globals(code)
 
-        # process all variables referenced by global environment
-        f_globals = {}
-        for var in func_global_refs:
-            if var in func.__globals__:
-                f_globals[var] = func.__globals__[var]
-
+        f_globals = {
+            var: func.__globals__[var]
+            for var in func_global_refs
+            if var in func.__globals__
+        }
         # defaults requires no processing
         defaults = func.__defaults__
 
@@ -850,8 +842,7 @@ class CloudPickler(Pickler):
                 rv = (getattr, (obj.__self__, obj.__name__))
                 return self.save_reduce(obj=obj, *rv)
 
-            is_unbound = hasattr(obj, '__objclass__')
-            if is_unbound:
+            if is_unbound := hasattr(obj, '__objclass__'):
                 # obj is an unbound builtin method (accessed from its class)
                 rv = (getattr, (obj.__objclass__, obj.__name__))
                 return self.save_reduce(obj=obj, *rv)
@@ -911,13 +902,12 @@ class CloudPickler(Pickler):
         # Memoization rarely is ever useful due to python bounding
         if obj.__self__ is None:
             self.save_reduce(getattr, (obj.im_class, obj.__name__))
+        elif PY3:  # pragma: no branch
+            self.save_reduce(types.MethodType, (obj.__func__, obj.__self__), obj=obj)
         else:
-            if PY3:  # pragma: no branch
-                self.save_reduce(types.MethodType, (obj.__func__, obj.__self__), obj=obj)
-            else:
-                self.save_reduce(
-                    types.MethodType,
-                    (obj.__func__, obj.__self__, type(obj.__self__)), obj=obj)
+            self.save_reduce(
+                types.MethodType,
+                (obj.__func__, obj.__self__, type(obj.__self__)), obj=obj)
 
     dispatch[types.MethodType] = save_instancemethod
 
@@ -925,9 +915,7 @@ class CloudPickler(Pickler):
         """Inner logic to save instance. Based off pickle.save_inst"""
         cls = obj.__class__
 
-        # Try the dispatch table (pickle module doesn't do it)
-        f = self.dispatch.get(cls)
-        if f:
+        if f := self.dispatch.get(cls):
             f(self, obj)  # Call unbound method with explicit self
             return
 
@@ -1037,7 +1025,9 @@ class CloudPickler(Pickler):
         if hasattr(obj, 'isatty') and obj.isatty():
             raise pickle.PicklingError("Cannot pickle files that map to tty objects")
         if 'r' not in obj.mode and '+' not in obj.mode:
-            raise pickle.PicklingError("Cannot pickle files that are not opened for reading: %s" % obj.mode)
+            raise pickle.PicklingError(
+                f"Cannot pickle files that are not opened for reading: {obj.mode}"
+            )
 
         name = obj.name
 
@@ -1050,7 +1040,7 @@ class CloudPickler(Pickler):
             contents = obj.read()
             obj.seek(curloc)
         except IOError:
-            raise pickle.PicklingError("Cannot pickle file %s as it cannot be read" % name)
+            raise pickle.PicklingError(f"Cannot pickle file {name} as it cannot be read")
         retval.write(contents)
         retval.seek(curloc)
 
@@ -1109,10 +1099,11 @@ def is_tornado_coroutine(func):
     if 'tornado.gen' not in sys.modules:
         return False
     gen = sys.modules['tornado.gen']
-    if not hasattr(gen, "is_coroutine_function"):
-        # Tornado version is too old
-        return False
-    return gen.is_coroutine_function(func)
+    return (
+        gen.is_coroutine_function(func)
+        if hasattr(gen, "is_coroutine_function")
+        else False
+    )
 
 
 def _rebuild_tornado_coroutine(func):
@@ -1278,11 +1269,6 @@ def _fill_function(*args):
 
 
 def _make_empty_cell():
-    if False:
-        # trick the compiler into creating an empty cell in our lambda
-        cell = None
-        raise AssertionError('this route should not be executed')
-
     return (lambda: cell).__closure__[0]
 
 
@@ -1387,11 +1373,7 @@ def _is_dynamic(module):
         if module.__spec__ is not None:
             return False
 
-        # In PyPy, Some built-in modules such as _codecs can have their
-        # __spec__ attribute set to None despite being imported.  For such
-        # modules, the ``_find_spec`` utility of the standard library is used.
-        parent_name = module.__name__.rpartition('.')[0]
-        if parent_name:  # pragma: no cover
+        if parent_name := module.__name__.rpartition('.')[0]:
             # This code handles the case where an imported package (and not
             # module) remains with __spec__ set to None. It is however untested
             # as no package in the PyPy stdlib has __spec__ set to None after

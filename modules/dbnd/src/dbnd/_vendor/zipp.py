@@ -184,10 +184,10 @@ class Path:
     @staticmethod
     def _implied_dirs(names):
         return more_itertools.unique_everseen(
-            parent + "/"
+            f"{parent}/"
             for name in names
             for parent in _parents(name)
-            if parent + "/" not in names
+            if f"{parent}/" not in names
         )
 
     @classmethod

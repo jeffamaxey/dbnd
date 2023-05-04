@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 """This package is deprecated! Please use the dbnd package instead!"""
 
+
 from dbnd import (
     Config,
     DataSourceTask,
@@ -73,7 +74,7 @@ __title__ = "databand"
 __description__ = "Machine Learning Orchestration"
 __url__ = "http://www.databand.ai/"
 __uri__ = __url__
-__doc__ = __description__ + " <" + __uri__ + ">"
+__doc__ = f"{__description__} <{__uri__}>"
 
 __author__ = "Evgeny Shulman"
 __email__ = "evgeny.shulman@databand.ai"

@@ -195,9 +195,7 @@ class ParameterFactory(object):
 
     def target_factory(self, target_factory, folder=False):
         tc = self.target_config(self._target_config.with_target_factory(target_factory))
-        if folder:
-            return tc.folder
-        return tc
+        return tc.folder if folder else tc
 
     def load_options(self, file_format, **options):
         current_options = self.parameter.load_options or {}
@@ -256,9 +254,7 @@ class ParameterFactory(object):
         task_output = self.modify(kind=_ParameterKind.task_output)
 
         value_type = self.parameter.value_type
-        if value_type is None:
-            return task_output.target
-        return task_output
+        return task_output.target if value_type is None else task_output
 
     def cast(self, type_):
         return self
@@ -268,10 +264,10 @@ class ParameterFactory(object):
         if TaskEssence.CONFIG.is_instance(type_):
             return self.nested_config(type_)
 
-        value_type = get_value_type_of_type(type_, inline_value_type=True)
-        if not value_type:
+        if value_type := get_value_type_of_type(type_, inline_value_type=True):
+            return self.modify(value_type=value_type)
+        else:
             raise unknown_value_type_in_parameter(type_)
-        return self.modify(value_type=value_type)
 
     def type(self, type_):
         value_type = get_value_type_of_type(type_)
@@ -467,13 +463,9 @@ class ParameterFactory(object):
 
         value_type = self._build_value_type(context)
 
-        validator = s.validator
-        if s.choices:
-            validator = ChoiceValidator(s.choices)
-
-        if is_not_defined(s.default):
-            if s.empty_default:
-                update_kwargs["default"] = value_type._generate_empty_default()
+        validator = ChoiceValidator(s.choices) if s.choices else s.validator
+        if is_not_defined(s.default) and s.empty_default:
+            update_kwargs["default"] = value_type._generate_empty_default()
 
         if not is_defined(s.load_on_build):
             update_kwargs["load_on_build"] = value_type.load_on_build

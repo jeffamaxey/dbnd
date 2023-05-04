@@ -25,11 +25,11 @@ class _DataSource(DataSourceTask):
 
     def run(self):
 
-        missing = []
-        for partial_output in flatten(self.data):
-            if not partial_output.exists():
-                missing.append(partial_output)
-        if missing:
+        if missing := [
+            partial_output
+            for partial_output in flatten(self.data)
+            if not partial_output.exists()
+        ]:
             raise friendly_error.task_data_source_not_exists(
                 self, missing, downstream=self.task_dag.downstream
             )
@@ -39,7 +39,7 @@ def data_source(data):
     a, b = os.path.split(str(data))
     a = hashlib.md5(a.encode("utf-8")).hexdigest()[:6]
     logger.debug("Creating external task %s", data)
-    return _DataSource(data=data, task_name="file_%s__%s" % (a, b))
+    return _DataSource(data=data, task_name=f"file_{a}__{b}")
 
 
 class DataTask(Task):
@@ -50,5 +50,4 @@ def data_combine(inputs, sort=False):
     targets = flatten(to_targets(inputs))
     if sort:
         targets = sorted(targets, key=lambda x: x.path)
-    data = MultiTarget(targets)
-    return data
+    return MultiTarget(targets)

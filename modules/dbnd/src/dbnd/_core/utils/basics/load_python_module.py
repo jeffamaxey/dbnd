@@ -67,20 +67,19 @@ def load_python_attr_from_module(attr_path):
     if not m:
         raise friendly_error.config.wrong_func_attr_format(attr_path)
 
-    module_path, attr_name = m.group(1), m.group(2)
+    module_path, attr_name = m[1], m[2]
     module = _load_module(module_path, description="")
 
     if not hasattr(module, attr_name):
-        raise DatabandError("Failed to import symbol %s" % attr_path)
+        raise DatabandError(f"Failed to import symbol {attr_path}")
 
-    attr = getattr(module, attr_name)
-    return attr
+    return getattr(module, attr_name)
 
 
 def load_python_callable(callable_path):
     callable_attr = load_python_attr_from_module(callable_path)
     if not callable(callable_attr):
-        raise DatabandError("The `%s` is not `callable`" % callable_attr)
+        raise DatabandError(f"The `{callable_attr}` is not `callable`")
     return callable_attr
 
 

@@ -58,14 +58,12 @@ def fold_parameter_value(left, right):
 
     if not left.parameter.value_type.support_merge:
         raise ValueError(
-            "value type {} not supporting merge".format(left.parameter.value_type)
+            f"value type {left.parameter.value_type} not supporting merge"
         )
 
     if left.parameter.value_type != right.parameter.value_type:
         raise ValueError(
-            "can't merge two value with different types left={} right={}".format(
-                left.parameter.value_type, right.parameter.value_type
-            )
+            f"can't merge two value with different types left={left.parameter.value_type} right={right.parameter.value_type}"
         )
 
     new_value = left.parameter.value_type.merge_values(left.value, right.value)
@@ -115,12 +113,12 @@ class Parameters(object):
         self._param_values_map = {p.parameter.name: p for p in self._param_values}
 
     def get_param_value_safe(self, param_name):  # type: (str) -> ParameterValue
-        pv = self.get_param_value(param_name)
-        if not pv:
+        if pv := self.get_param_value(param_name):
+            return pv
+        else:
             raise DatabandError(
-                "Param value '%s' is not found at %s" % (param_name, self.source)
+                f"Param value '{param_name}' is not found at {self.source}"
             )
-        return pv
 
     def update_param_value(self, param_name, value):
         self.get_param_value_safe(param_name).update_param_value(value)
@@ -129,18 +127,13 @@ class Parameters(object):
         return self._param_values_map.get(param_name, None)
 
     def get_param(self, param_name):  # type: (str) -> Optional[ParameterDefinition]
-        p = self.get_param_value(param_name)
-        if p:
-            return p.parameter
-        return None
+        return p.parameter if (p := self.get_param_value(param_name)) else None
 
     def get_value(self, param_name):
-        p = self.get_param_value(param_name)
-        if not p:
-            raise DatabandError(
-                "Parameter '%s' not found at %s" % (param_name, self.source)
-            )
-        return p.value
+        if p := self.get_param_value(param_name):
+            return p.value
+        else:
+            raise DatabandError(f"Parameter '{param_name}' not found at {self.source}")
 
     def _filter_params(self, param_filter):
         # type: (ParameterFilter)-> Iterable[ParameterValue]
@@ -208,8 +201,7 @@ class Parameters(object):
     def __iter__(self):
         # type: (Parameters) -> Iterable[ParameterValue]
         """helper function to iterate all the params with it's definition, value and meta"""
-        for pv in self._param_values:
-            yield pv
+        yield from self._param_values
 
     def as_key_value_dict(self):
         return {p.name: p.value for p in self.get_param_values()}

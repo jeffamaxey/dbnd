@@ -28,9 +28,4 @@ def get_hashed_name(s, paranoid=False):
 
     a = digest[2] + 256 * digest[3]
     b = digest[0] + 256 * digest[1]
-    name = "{}_{}".format(
-        namesgenerator.left[a % len(namesgenerator.left)],
-        namesgenerator.right[b % len(namesgenerator.right)],
-    )
-
-    return name
+    return f"{namesgenerator.left[a % len(namesgenerator.left)]}_{namesgenerator.right[b % len(namesgenerator.right)]}"

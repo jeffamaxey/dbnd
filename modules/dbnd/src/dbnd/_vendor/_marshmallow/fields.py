@@ -132,10 +132,7 @@ class Field(FieldABC):
         self.dump_to = dump_to  # this flag is used by Marshaller
         self.validate = validate
         if utils.is_iterable_but_not_string(validate):
-            if not utils.is_generator(validate):
-                self.validators = validate
-            else:
-                self.validators = list(validate)
+            self.validators = list(validate) if utils.is_generator(validate) else validate
         elif callable(validate):
             self.validators = [validate]
         elif validate is None:
@@ -146,13 +143,7 @@ class Field(FieldABC):
 
         self.required = required
         # If missing=None, None should be considered valid by default
-        if allow_none is None:
-            if missing is None:
-                self.allow_none = True
-            else:
-                self.allow_none = False
-        else:
-            self.allow_none = allow_none
+        self.allow_none = missing is None if allow_none is None else allow_none
         self.load_only = load_only
         self.dump_only = dump_only
         self.missing = missing
@@ -163,7 +154,7 @@ class Field(FieldABC):
         # Collect default error message from self and parent classes
         messages = {}
         for cls in reversed(self.__class__.__mro__):
-            messages.update(getattr(cls, 'default_error_messages', {}))
+            messages |= getattr(cls, 'default_error_messages', {})
         messages.update(error_messages or {})
         self.error_messages = messages
 
@@ -197,7 +188,7 @@ class Field(FieldABC):
                 if not isinstance(validator, Validator) and r is False:
                     self.fail('validator_failed')
             except ValidationError as err:
-                kwargs.update(err.kwargs)
+                kwargs |= err.kwargs
                 if isinstance(err.messages, dict):
                     errors.append(err.messages)
                 else:
@@ -223,12 +214,14 @@ class Field(FieldABC):
         """Validate missing values. Raise a :exc:`ValidationError` if
         `value` should be considered missing.
         """
-        if value is missing_:
-            if hasattr(self, 'required') and self.required:
-                self.fail('required')
-        if value is None:
-            if hasattr(self, 'allow_none') and self.allow_none is not True:
-                self.fail('null')
+        if value is missing_ and hasattr(self, 'required') and self.required:
+            self.fail('required')
+        if (
+            value is None
+            and hasattr(self, 'allow_none')
+            and self.allow_none is not True
+        ):
+            self.fail('null')
 
     def serialize(self, attr, obj, accessor=None):
         """Pulls the value for the given key from the object, applies the
@@ -241,12 +234,8 @@ class Field(FieldABC):
         """
         if self._CHECK_ATTRIBUTE:
             value = self.get_value(attr, obj, accessor=accessor)
-            if value is missing_:
-                if hasattr(self, 'default'):
-                    if callable(self.default):
-                        return self.default()
-                    else:
-                        return self.default
+            if value is missing_ and hasattr(self, 'default'):
+                return self.default() if callable(self.default) else self.default
         else:
             value = None
         return self._serialize(value, attr, obj)
@@ -260,7 +249,7 @@ class Field(FieldABC):
         # Validate required fields, deserialize, then validate
         # deserialized value
         self._validate_missing(value)
-        if getattr(self, 'allow_none', False) is True and value is None:
+        if getattr(self, 'allow_none', False) and value is None:
             return None
         output = self._deserialize(value, attr, data)
         self._validate(output)
@@ -396,18 +385,14 @@ class Nested(Field):
         """
         if not self.__schema:
             # Ensure that only parameter is a tuple
-            if isinstance(self.only, basestring):
-                only = (self.only,)
-            else:
-                only = self.only
-
+            only = (self.only, ) if isinstance(self.only, basestring) else self.only
             # Inherit context from parent.
             context = getattr(self.parent, 'context', {})
             if isinstance(self.nested, SchemaABC):
                 self.__schema = self.nested
                 self.__schema.context.update(context)
             elif isinstance(self.nested, type) and \
-                    issubclass(self.nested, SchemaABC):
+                        issubclass(self.nested, SchemaABC):
                 self.__schema = self.nested(many=self.many,
                         only=only, exclude=self.exclude, context=context,
                         load_only=self._nested_normalized_option('load_only'),
@@ -432,7 +417,7 @@ class Nested(Field):
         return self.__schema
 
     def _nested_normalized_option(self, option_name):
-        nested_field = '%s.' % self.name
+        nested_field = f'{self.name}.'
         return [field.split(nested_field, 1)[1]
                 for field in getattr(self.root, option_name, set())
                 if field.startswith(nested_field)]
@@ -451,10 +436,7 @@ class Nested(Field):
         if isinstance(self.only, basestring):  # self.only is a field name
             only_field = self.schema.fields[self.only]
             key = ''.join([self.schema.prefix or '', only_field.dump_to or self.only])
-            if self.many:
-                return utils.pluck(ret, key=key)
-            else:
-                return ret[key]
+            return utils.pluck(ret, key=key) if self.many else ret[key]
         if errors:
             raise ValidationError(errors, data=ret)
         return ret
@@ -475,8 +457,7 @@ class Nested(Field):
         if value is missing_ and hasattr(self, 'required'):
             if self.nested == _RECURSIVE_NESTED:
                 self.fail('required')
-            errors = self._check_required()
-            if errors:
+            if errors := self._check_required():
                 raise ValidationError(errors)
         else:
             super(Nested, self)._validate_missing(value)
@@ -535,12 +516,12 @@ class List(Field):
                                            'must be a subclass of '
                                            'marshmallow.base.FieldABC')
             self.container = cls_or_instance()
-        else:
-            if not isinstance(cls_or_instance, FieldABC):
-                raise ValueError('The instances of the list '
-                                           'elements must be of type '
-                                           'marshmallow.base.FieldABC')
+        elif isinstance(cls_or_instance, FieldABC):
             self.container = cls_or_instance
+        else:
+            raise ValueError('The instances of the list '
+                                       'elements must be of type '
+                                       'marshmallow.base.FieldABC')
 
     def get_value(self, attr, obj, accessor=None):
         """Return the value for a given key from an object."""
@@ -578,7 +559,7 @@ class List(Field):
                 result.append(self.container.deserialize(each))
             except ValidationError as e:
                 result.append(e.data)
-                errors.update({idx: e.messages})
+                errors[idx] = e.messages
 
         if errors:
             raise ValidationError(errors, data=result)
@@ -597,9 +578,7 @@ class String(Field):
     }
 
     def _serialize(self, value, attr, obj):
-        if value is None:
-            return None
-        return utils.ensure_text_type(value)
+        return None if value is None else utils.ensure_text_type(value)
 
     def _deserialize(self, value, attr, data):
         if not isinstance(value, basestring):
@@ -654,9 +633,7 @@ class Number(Field):
 
     def _format_num(self, value):
         """Return the number value for value, given this field's `num_type`."""
-        if value is None:
-            return None
-        return self.num_type(value)
+        return None if value is None else self.num_type(value)
 
     def _validated(self, value):
         """Format the value or raise a :exc:`ValidationError` if an error occurs."""
@@ -748,9 +725,8 @@ class Decimal(Number):
         if self.allow_nan:
             if num.is_nan():
                 return decimal.Decimal('NaN')  # avoid sNaN, -sNaN and -NaN
-        else:
-            if num.is_nan() or num.is_infinite():
-                self.fail('special')
+        elif num.is_nan() or num.is_infinite():
+            self.fail('special')
 
         if self.places is not None and num.is_finite():
             num = num.quantize(self.places, rounding=self.rounding)
@@ -797,14 +773,13 @@ class Boolean(Field):
     def _deserialize(self, value, attr, data):
         if not self.truthy:
             return bool(value)
-        else:
-            try:
-                if value in self.truthy:
-                    return True
-                elif value in self.falsy:
-                    return False
-            except TypeError:
-                pass
+        try:
+            if value in self.truthy:
+                return True
+            elif value in self.falsy:
+                return False
+        except TypeError:
+            pass
         self.fail('invalid')
 
 class FormattedString(Field):
@@ -902,21 +877,22 @@ class DateTime(Field):
         if value is None:
             return None
         self.dateformat = self.dateformat or self.DEFAULT_FORMAT
-        format_func = self.DATEFORMAT_SERIALIZATION_FUNCS.get(self.dateformat, None)
-        if format_func:
-            try:
-                return format_func(value, localtime=self.localtime)
-            except (AttributeError, ValueError):
-                self.fail('format', input=value)
-        else:
+        if not (
+            format_func := self.DATEFORMAT_SERIALIZATION_FUNCS.get(
+                self.dateformat, None
+            )
+        ):
             return value.strftime(self.dateformat)
+        try:
+            return format_func(value, localtime=self.localtime)
+        except (AttributeError, ValueError):
+            self.fail('format', input=value)
 
     def _deserialize(self, value, attr, data):
         if not value:  # Falsy values, e.g. '', None, [] are not valid
             raise self.fail('invalid')
         self.dateformat = self.dateformat or self.DEFAULT_FORMAT
-        func = self.DATEFORMAT_DESERIALIZATION_FUNCS.get(self.dateformat)
-        if func:
+        if func := self.DATEFORMAT_DESERIALIZATION_FUNCS.get(self.dateformat):
             try:
                 return func(value)
             except (TypeError, AttributeError, ValueError):
@@ -964,9 +940,7 @@ class Time(Field):
             ret = value.isoformat()
         except AttributeError:
             self.fail('format', input=value)
-        if value.microsecond:
-            return ret[:15]
-        return ret
+        return ret[:15] if value.microsecond else ret
 
     def _deserialize(self, value, attr, data):
         """Deserialize an ISO8601-formatted time to a :class:`datetime.time` object."""
@@ -1050,12 +1024,12 @@ class TimeDelta(Field):
             days = value.days
             if self.precision == self.DAYS:
                 return days
-            else:
-                seconds = days * 86400 + value.seconds
-                if self.precision == self.SECONDS:
-                    return seconds
-                else:  # microseconds
-                    return seconds * 10**6 + value.microseconds  # flake8: noqa
+            seconds = days * 86400 + value.seconds
+            return (
+                seconds
+                if self.precision == self.SECONDS
+                else seconds * 10**6 + value.microseconds
+            )
         except AttributeError:
             self.fail('format', input=value)
 
@@ -1259,13 +1233,12 @@ class Function(Field):
         return value
 
     def _call_or_raise(self, func, value, attr):
-        if len(utils.get_func_args(func)) > 1:
-            if self.parent.context is None:
-                msg = 'No context available for Function field {0!r}'.format(attr)
-                raise ValidationError(msg)
-            return func(value, self.parent.context)
-        else:
+        if len(utils.get_func_args(func)) <= 1:
             return func(value)
+        if self.parent.context is None:
+            msg = 'No context available for Function field {0!r}'.format(attr)
+            raise ValidationError(msg)
+        return func(value, self.parent.context)
 
 
 class Constant(Field):

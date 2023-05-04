@@ -138,7 +138,7 @@ class NumericalValidator(Validator):
 
     @property
     def description(self):
-        return "permitted values: " + self._permitted_range
+        return f"permitted values: {self._permitted_range}"
 
     def validate(self, parameter, value):
         if self._left_op(self._min_value, value) and self._right_op(

@@ -23,7 +23,7 @@ class RawDeviceLog(DataSourceTask):
     def band(self):
         self.logs = target(
             self.root_location,
-            "%s/" % self.task_target_date.strftime("%Y-%m-%d"),
+            f'{self.task_target_date.strftime("%Y-%m-%d")}/',
             config=folder.without_flag(),
         )
 
@@ -47,7 +47,7 @@ class DeviceLogsPipeline(dbnd.PipelineTask):
 
     def band(self):
         projected_logs = []
-        for i, d in enumerate(period_dates(self.task_target_date, self.period)):
+        for d in period_dates(self.task_target_date, self.period):
             raw_logs = RawDeviceLog(task_target_date=d).logs
             projected = DeviceLogProjection(raw_logs=raw_logs, task_target_date=d)
             projected_logs.append(projected.projected_logs)

@@ -29,9 +29,9 @@ print(setup_cfg)
 def dbnd_package(name, extras=None):
     pkg = name
     if extras:
-        pkg += "[%s]" % ",".join(extras)
+        pkg += f'[{",".join(extras)}]'
 
-    pkg += "==%s" % VERSION
+    pkg += f"=={VERSION}"
     return pkg
 
 

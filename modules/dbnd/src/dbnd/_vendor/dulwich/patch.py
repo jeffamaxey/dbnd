@@ -104,10 +104,10 @@ def _format_range_unified(start, stop):
     beginning = start + 1  # lines start numbering with one
     length = stop - start
     if length == 1:
-        return "{}".format(beginning)
+        return f"{beginning}"
     if not length:
         beginning -= 1  # empty ranges begin at line just before the range
-    return "{},{}".format(beginning, length)
+    return f"{beginning},{length}"
 
 
 def unified_diff(
@@ -122,21 +122,15 @@ def unified_diff(
     for group in SequenceMatcher(None, a, b).get_grouped_opcodes(n):
         if not started:
             started = True
-            fromdate = "\t{}".format(fromfiledate) if fromfiledate else ""
-            todate = "\t{}".format(tofiledate) if tofiledate else ""
-            yield "--- {}{}{}".format(
-                fromfile.decode("ascii"), fromdate, lineterm
-            ).encode("ascii")
-            yield "+++ {}{}{}".format(tofile.decode("ascii"), todate, lineterm).encode(
-                "ascii"
-            )
+            fromdate = f"\t{fromfiledate}" if fromfiledate else ""
+            todate = f"\t{tofiledate}" if tofiledate else ""
+            yield f'--- {fromfile.decode("ascii")}{fromdate}{lineterm}'.encode("ascii")
+            yield f'+++ {tofile.decode("ascii")}{todate}{lineterm}'.encode("ascii")
 
         first, last = group[0], group[-1]
         file1_range = _format_range_unified(first[1], last[2])
         file2_range = _format_range_unified(first[3], last[4])
-        yield "@@ -{} +{} @@{}".format(file1_range, file2_range, lineterm).encode(
-            "ascii"
-        )
+        yield f"@@ -{file1_range} +{file2_range} @@{lineterm}".encode("ascii")
 
         for tag, i1, i2, j1, j2 in group:
             if tag == "equal":
@@ -145,12 +139,12 @@ def unified_diff(
                 continue
             if tag in ("replace", "delete"):
                 for line in a[i1:i2]:
-                    if not line[-1:] == b"\n":
+                    if line[-1:] != b"\n":
                         line += b"\n\\ No newline at end of file\n"
                     yield b"-" + line
             if tag in ("replace", "insert"):
                 for line in b[j1:j2]:
-                    if not line[-1:] == b"\n":
+                    if line[-1:] != b"\n":
                         line += b"\n\\ No newline at end of file\n"
                     yield b"+" + line
 
@@ -164,17 +158,11 @@ def is_binary(content):
 
 
 def shortid(hexsha):
-    if hexsha is None:
-        return b"0" * 7
-    else:
-        return hexsha[:7]
+    return b"0" * 7 if hexsha is None else hexsha[:7]
 
 
 def patch_filename(p, root):
-    if p is None:
-        return b"/dev/null"
-    else:
-        return root + b"/" + p
+    return b"/dev/null" if p is None else root + b"/" + p
 
 
 def write_object_diff(f, store, old_file, new_file, diff_binary=False):
@@ -203,10 +191,7 @@ def write_object_diff(f, store, old_file, new_file, diff_binary=False):
             return store[hexsha]
 
     def lines(content):
-        if not content:
-            return []
-        else:
-            return content.splitlines()
+        return content.splitlines() if content else []
 
     f.writelines(
         gen_diff_header((old_path, new_path), (old_mode, new_mode), (old_id, new_id))
@@ -262,10 +247,7 @@ def write_blob_diff(f, old_file, new_file):
     new_path = patch_filename(new_path, b"b")
 
     def lines(blob):
-        if blob is not None:
-            return blob.splitlines()
-        else:
-            return []
+        return blob.splitlines() if blob is not None else []
 
     f.writelines(
         gen_diff_header(

@@ -22,7 +22,7 @@ def _short_name(name):
 
 
 def format_source_suffix(name):
-    return "[%s]" % name
+    return f"[{name}]"
 
 
 @attr.s
@@ -56,7 +56,7 @@ class TaskPassport(object):
 
     @classmethod
     def from_module(cls, module):
-        full_task_family_short = "%s" % (_short_name(module))
+        full_task_family_short = f"{_short_name(module)}"
 
         return TaskPassport(
             full_task_family=module,
@@ -69,8 +69,8 @@ class TaskPassport(object):
     def build_task_passport(
         cls, cls_name, module_name, task_namespace=NOTHING, task_family=None
     ):
-        full_task_family = "%s.%s" % (module_name, cls_name)
-        full_task_family_short = "%s.%s" % (_short_name(module_name), cls_name)
+        full_task_family = f"{module_name}.{cls_name}"
+        full_task_family_short = f"{_short_name(module_name)}.{cls_name}"
 
         if not is_defined(task_namespace):
             namespace_at_class_time = get_task_registry().get_namespace(module_name)
@@ -82,7 +82,7 @@ class TaskPassport(object):
         if task_family:
             task_config_section = task_family
         elif task_namespace:
-            task_family = "{}.{}".format(task_namespace, cls_name)
+            task_family = f"{task_namespace}.{cls_name}"
             task_config_section = task_family
         else:
             task_family = cls_name
@@ -96,4 +96,4 @@ class TaskPassport(object):
         )
 
     def format_source_name(self, name):
-        return "%s%s" % (self.full_task_family_short, format_source_suffix(name))
+        return f"{self.full_task_family_short}{format_source_suffix(name)}"

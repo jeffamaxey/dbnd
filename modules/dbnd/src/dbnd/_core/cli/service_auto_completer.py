@@ -83,8 +83,8 @@ class AutoCompleter(FastSingletonContext):
                 ):
                     continue
 
-                param_family = task_family + "." + param_name
-                param_full = full_task_family + "." + param_name
+                param_family = f"{task_family}.{param_name}"
+                param_full = f"{full_task_family}.{param_name}"
 
                 store.set(param_full, param_obj.description)
                 store.index(PARAM_FAMILY, param_family, param_full)
@@ -123,7 +123,7 @@ class AutoCompleter(FastSingletonContext):
             if with_root and len(ctx.args) > 0:
                 params = store.search(
                     indices_names=[PARAM_FAMILY, PARAM_FULL],
-                    prefix=ctx.args[0] + "." + incomplete,
+                    prefix=f"{ctx.args[0]}.{incomplete}",
                 )
 
                 for param_name, param_desc in params.items():
@@ -153,7 +153,7 @@ class AutoCompleter(FastSingletonContext):
 
             for task_name, task_desc in tasks.items():
                 short_desc = _help_short(task_desc)
-                res.append((task_name + ".", short_desc))
+                res.append((f"{task_name}.", short_desc))
 
             return res
 
@@ -178,9 +178,7 @@ class AutoCompleter(FastSingletonContext):
 
 
 def _get_indices(is_config):
-    if is_config:
-        return [CONFIG_FAMILY, CONFIG_FULL]
-    return [TASK_FAMILY, TASK_FULL]
+    return [CONFIG_FAMILY, CONFIG_FULL] if is_config else [TASK_FAMILY, TASK_FULL]
 
 
 completer = AutoCompleter.try_instance()

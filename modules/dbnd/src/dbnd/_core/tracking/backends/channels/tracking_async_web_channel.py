@@ -52,9 +52,7 @@ class TrackingAsyncWebChannelBackgroundWorker(object):
     def is_alive(self) -> bool:
         if self._thread_for_pid != os.getpid():
             return False
-        if not self._thread:
-            return False
-        return self._thread.is_alive()
+        return self._thread.is_alive() if self._thread else False
 
     def start(self) -> None:
         with self.lock:

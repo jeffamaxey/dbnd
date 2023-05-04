@@ -39,12 +39,9 @@ register_value_type(MyConfigValueType())
 
 @task
 def update_config(my_config=1):
-    # type: (MyConfig)-> MyConfig
-    new_config = MyConfig(
-        my_config_id="{}_patched".format(my_config.my_config_id), data={"config": "2"}
+    return MyConfig(
+        my_config_id=f"{my_config.my_config_id}_patched", data={"config": "2"}
     )
-
-    return new_config
 
 
 @task

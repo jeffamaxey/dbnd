@@ -58,7 +58,7 @@ def dump_trace(dump_file=None):
         if dump_file is True:
             dump_file = os.path.join(
                 SIGQUIT_DUMP_DIR,
-                "dbnd.dump.%s.txt" % (utcnow().strftime("%Y%m%d-%H%M%S")),
+                f'dbnd.dump.{utcnow().strftime("%Y%m%d-%H%M%S")}.txt',
             )
         if dump_file:
             with open(dump_file, "wt") as df_fp:
@@ -66,9 +66,7 @@ def dump_trace(dump_file=None):
             _p("Stack has been dumped into {}".format(dump_file))
         return traceback_data
     except Exception as e:
-        print(
-            "Couldn't report stack traces after reciving SIGQUIT! Exception: %s", str(e)
-        )
+        print("Couldn't report stack traces after reciving SIGQUIT! Exception: %s", e)
 
 
 def register_sigquit_stack_dump_handler():

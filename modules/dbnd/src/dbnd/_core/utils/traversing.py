@@ -99,10 +99,7 @@ def traverse(
         if filter_none:
             converted = ((k, v) for k, v in converted if v is not None)
         new_obj = obj.__class__(converted)
-        if filter_empty and not new_obj:
-            return None
-        return new_obj
-
+        return None if filter_empty and not new_obj else new_obj
     if isinstance(obj, six.string_types):
         return convert_f(obj)
 
@@ -122,9 +119,7 @@ def traverse(
     list_obj_constructor = None
     if isinstance(obj, (list, tuple, set)):
         list_obj_constructor = obj.__class__
-    elif is_instance_by_class_name(obj, "DataFrame"):
-        pass
-    else:
+    elif not is_instance_by_class_name(obj, "DataFrame"):
         try:
             iter(obj)  # noqa: F841
             list_obj_constructor = list
@@ -137,10 +132,7 @@ def traverse(
         if filter_none:
             converted = filter(lambda x: x is not None, converted)
         new_obj = list_obj_constructor(converted)
-        if filter_empty and not new_obj:
-            return None
-        return new_obj
-
+        return None if filter_empty and not new_obj else new_obj
     # so it's simple obj, let apply function
     return convert_f(obj)
 
@@ -161,9 +153,7 @@ def getpaths(struct):
 
 
 def traverse_to_str(obj):
-    if obj is None:
-        return None
-    return traverse(obj, convert_f=str)
+    return None if obj is None else traverse(obj, convert_f=str)
 
 
 def traverse_frozen_set(obj):

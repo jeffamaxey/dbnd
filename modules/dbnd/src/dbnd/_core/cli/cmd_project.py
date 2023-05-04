@@ -36,10 +36,9 @@ def project_init(ctx, overwrite, dbnd_home, dbnd_system):
             )
 
         logger.warning(
-            "You are re-initializing your project, all files at %s are going to be over written!"
-            % dbnd_home
+            f"You are re-initializing your project, all files at {dbnd_home} are going to be over written!"
         )
 
     copy_tree(conf_folder, dbnd_home)
-    click.echo("Databand project has been initialized at %s" % dbnd_home)
+    click.echo(f"Databand project has been initialized at {dbnd_home}")
     return

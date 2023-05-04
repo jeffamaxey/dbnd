@@ -69,8 +69,7 @@ def _tree_entries(path, tree):
     result = []
     if not tree:
         return result
-    for entry in tree.iteritems(name_order=True):
-        result.append(entry.in_path(path))
+    result.extend(entry.in_path(path) for entry in tree.iteritems(name_order=True))
     return result
 
 
@@ -105,18 +104,14 @@ def _merge_entries(path, tree1, tree2):
             result.append((entry1, entry2))
             i1 += 1
             i2 += 1
-    for i in range(i1, len1):
-        result.append((entries1[i], _NULL_ENTRY))
-    for i in range(i2, len2):
-        result.append((_NULL_ENTRY, entries2[i]))
+    result.extend((entries1[i], _NULL_ENTRY) for i in range(i1, len1))
+    result.extend((_NULL_ENTRY, entries2[i]) for i in range(i2, len2))
     return result
 
 
 def _is_tree(entry):
     mode = entry.mode
-    if mode is None:
-        return False
-    return stat.S_ISDIR(mode)
+    return False if mode is None else stat.S_ISDIR(mode)
 
 
 def walk_trees(store, tree1_id, tree2_id, prune_identical=False):
@@ -187,10 +182,9 @@ def tree_changes(
             "rename_detector and include_trees are mutually exclusive"
         )
     if rename_detector is not None and tree1_id is not None and tree2_id is not None:
-        for change in rename_detector.changes_with_renames(
+        yield from rename_detector.changes_with_renames(
             tree1_id, tree2_id, want_unchanged=want_unchanged
-        ):
-            yield change
+        )
         return
 
     entries = walk_trees(
@@ -228,10 +222,7 @@ def tree_changes(
 
 
 def _all_eq(seq, key, value):
-    for e in seq:
-        if key(e) != value:
-            return False
-    return True
+    return all(key(e) == value for e in seq)
 
 
 def _all_same(seq, key):
@@ -267,10 +258,7 @@ def tree_changes_for_merge(store, parent_tree_ids, tree_id, rename_detector=None
     # Organize by path.
     for i, parent_changes in enumerate(all_parent_changes):
         for change in parent_changes:
-            if change.type == CHANGE_DELETE:
-                path = change.old.path
-            else:
-                path = change.new.path
+            path = change.old.path if change.type == CHANGE_DELETE else change.new.path
             changes_by_path[path][i] = change
 
     def old_sha(c):
@@ -346,8 +334,7 @@ def _common_bytes(blocks1, blocks2):
         blocks1, blocks2 = blocks2, blocks1
     score = 0
     for block, count1 in blocks1.items():
-        count2 = blocks2.get(block)
-        if count2:
+        if count2 := blocks2.get(block):
             score += min(count1, count2)
     return score
 
@@ -372,9 +359,11 @@ def _similarity_score(obj1, obj2, block_cache=None):
 
     common_bytes = _common_bytes(block_cache[obj1.id], block_cache[obj2.id])
     max_size = max(obj1.raw_length(), obj2.raw_length())
-    if not max_size:
-        return _MAX_SCORE
-    return int(float(common_bytes) * _MAX_SCORE / max_size)
+    return (
+        int(float(common_bytes) * _MAX_SCORE / max_size)
+        if max_size
+        else _MAX_SCORE
+    )
 
 
 def _tree_change_key(entry):
@@ -574,7 +563,7 @@ class RenameDetector(object):
             return
 
         modifies = {}
-        delete_map = dict((d.old.path, d) for d in self._deletes)
+        delete_map = {d.old.path: d for d in self._deletes}
         for add in self._adds:
             path = add.new.path
             delete = delete_map.get(path)

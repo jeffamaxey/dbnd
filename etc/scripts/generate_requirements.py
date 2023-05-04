@@ -46,23 +46,23 @@ class Requirement(BaseRequirement):
         return None
 
     def get_markers_str_without_extra(self):
-        if self.marker:
-            markers_without_extra = []
-            for expr in self.marker._markers:
-                if isinstance(expr, tuple):
-                    variable, op, value = expr
-                    if variable.value == "extra":
+        if not self.marker:
+            return None
+        markers_without_extra = []
+        for expr in self.marker._markers:
+            if isinstance(expr, tuple):
+                variable, op, value = expr
+                if variable.value == "extra":
                         # previous marker might be 'and' and now it's redundant
-                        if markers_without_extra:
-                            if markers_without_extra.pop(-1) == "and":
-                                pass  # everything as expected
-                            else:
-                                # we don't have such cases ATM but they might apper
-                                raise NotImplementedError()
-                        continue
-                markers_without_extra.append(expr)
-            return _format_marker(markers_without_extra)
-        return None
+                    if (
+                        markers_without_extra
+                        and markers_without_extra.pop(-1) != "and"
+                    ):
+                        # we don't have such cases ATM but they might apper
+                        raise NotImplementedError()
+                    continue
+            markers_without_extra.append(expr)
+        return _format_marker(markers_without_extra)
 
 
 def _get_metadata(wheel_file):
@@ -70,7 +70,7 @@ def _get_metadata(wheel_file):
     for f in archive.namelist():
         if f.endswith("METADATA"):
             return archive.open(f).read().decode("utf-8")
-    raise Exception("Metadata file not found in %s" % wheel_file)
+    raise Exception(f"Metadata file not found in {wheel_file}")
 
 
 def save_to_file(requirements_file, requirements):
@@ -98,7 +98,7 @@ def generate_requirements(
 
         req = Requirement(meta_field)
         if third_party_only and req.is_dbnd_package():
-            print("Skipping %s" % req.name)
+            print(f"Skipping {req.name}")
             continue
 
         print(req)
@@ -111,8 +111,7 @@ def generate_requirements(
             parts.append(str(req.specifier))
         req_str = "".join(parts)
         if req.marker:
-            extra_marker = req.get_extra_marker()
-            if extra_marker:
+            if extra_marker := req.get_extra_marker():
                 print("Extras marker:", req.marker)
                 req_parts = filter(bool, [req_str, req.get_markers_str_without_extra()])
                 requirements_extras[extra_marker].append("; ".join(req_parts))
@@ -123,10 +122,10 @@ def generate_requirements(
     for extra_name in extra_packages:
         extras = requirements_extras.get(extra_name, [])
         if separate_extras and extras:
-            extras_filename = requirements_file + "[%s]" % extra_name
+            extras_filename = f"{requirements_file}[{extra_name}]"
             if ".requirements.txt" in requirements_file:
                 extras_filename = requirements_file.replace(
-                    ".requirements.txt", "[%s].requirements.txt" % extra_name
+                    ".requirements.txt", f"[{extra_name}].requirements.txt"
                 )
 
             save_to_file(extras_filename, extras)

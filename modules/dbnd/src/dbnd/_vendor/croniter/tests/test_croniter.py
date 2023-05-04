@@ -58,7 +58,7 @@ class CroniterTest(base.TestCase):
         self.assertEqual(base.day, n1.day)
         self.assertEqual(base.hour, n1.hour)
         self.assertEqual(base.minute, n1.minute - 1)
-        for i in range(39):  # ~ 58
+        for _ in range(39):
             itr.get_next()
         n2 = itr.get_next(datetime)
         self.assertEqual(n2.minute, 59)
@@ -69,7 +69,7 @@ class CroniterTest(base.TestCase):
         itr = croniter('*/5 * * * *', base)
         n4 = itr.get_next(datetime)
         self.assertEqual(n4.minute, 20)
-        for i in range(6):
+        for _ in range(6):
             itr.get_next()
         n5 = itr.get_next(datetime)
         self.assertEqual(n5.minute, 55)
@@ -83,7 +83,7 @@ class CroniterTest(base.TestCase):
         n1 = itr.get_next(datetime)
         self.assertEqual(n1.hour, 15)
         self.assertEqual(n1.minute, 0)
-        for i in range(2):
+        for _ in range(2):
             itr.get_next()
         n2 = itr.get_next(datetime)
         self.assertEqual(n2.hour, 0)
@@ -198,7 +198,7 @@ class CroniterTest(base.TestCase):
         n2 = itr.get_next(datetime)
         self.assertEqual(n2.month, 3)
         self.assertEqual(n2.day, 1)
-        for i in range(8):
+        for _ in range(8):
             itr.get_next()
         n3 = itr.get_next(datetime)
         self.assertEqual(n3.month, 12)
@@ -462,7 +462,7 @@ class CroniterTest(base.TestCase):
         itr = croniter('* * 31 2 *', base)
         try:
             itr.get_next(datetime)
-        except (CroniterBadDateError,) as ex:
+        except CroniterBadDateError as ex:
             self.assertEqual("{0}".format(ex),
                              'failed to find next date')
 
@@ -857,7 +857,7 @@ class CroniterTest(base.TestCase):
         ret = []
         # jan 14 is monday
         dt = datetime(2019, 1, 14, 0, 0, 0, 0)
-        for i in range(10):
+        for _ in range(10):
             c = croniter("0 0 * * 2-4 *", start_time=dt)
             dt = datetime.utcfromtimestamp(c.get_next())
             ret.append(dt)
@@ -877,7 +877,7 @@ class CroniterTest(base.TestCase):
              '2019-02-05 00:00:00'])
         ret = []
         dt = datetime(2019, 1, 14, 0, 0, 0, 0)
-        for i in range(10):
+        for _ in range(10):
             c = croniter("0 0 * * 1-7 *", start_time=dt)
             dt = datetime.utcfromtimestamp(c.get_next())
             ret.append(dt)
@@ -899,7 +899,7 @@ class CroniterTest(base.TestCase):
     def test_issue_monsun_117(self):
         ret = []
         dt = datetime(2019, 1, 14, 0, 0, 0, 0)
-        for i in range(10):
+        for _ in range(10):
             # c = croniter("0 0 * * Mon-Sun *", start_time=dt)
             c = croniter("0 0 * * Wed-Sun *", start_time=dt)
             dt = datetime.utcfromtimestamp(c.get_next())

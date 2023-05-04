@@ -252,8 +252,7 @@ class LoggingConfig(config.Config):
         except Exception as e:
             # we print it this way, as it could be that now "logging" is down!
             print(
-                "Failed to load reload logging configuration with dbnd settings! Exception: %s"
-                % (e,),
+                f"Failed to load reload logging configuration with dbnd settings! Exception: {e}",
                 file=sys.__stderr__,
             )
             raise
@@ -352,7 +351,7 @@ class LoggingConfig(config.Config):
         try:
             # we print to stderr as well in case logging is broken
             print("DEBUG_LOG_CONFIG:" + msg % args, file=sys.__stderr__)
-            logger.info("DEBUG_LOG_CONFIG:" + msg, *args)
+            logger.info(f"DEBUG_LOG_CONFIG:{msg}", *args)
         except Exception:
             pass
 

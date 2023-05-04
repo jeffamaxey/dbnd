@@ -25,11 +25,11 @@ def tracker():
 )
 def wait(timeout):
     with new_dbnd_context(name="new_context") as dbnd_ctx:
-        logger.info("Waiting {} seconds for tracker to become ready:".format(timeout))
+        logger.info(f"Waiting {timeout} seconds for tracker to become ready:")
 
         is_ready = _wait_for_tracking_store(dbnd_ctx, wait_timeout=timeout)
         if not is_ready:
-            logger.error("Tracker is not ready after {} seconds.".format(timeout))
+            logger.error(f"Tracker is not ready after {timeout} seconds.")
             sys.exit(1)
         logger.info("Tracker is ready.")
 

@@ -227,7 +227,7 @@ def symbolic_ref(repo, ref_name, force=False):
     with open_repo_closing(repo) as repo_obj:
         ref_path = _make_branch_ref(ref_name)
         if not force and ref_path not in repo_obj.refs.keys():
-            raise ValueError("fatal: ref `%s` is not a ref" % ref_name)
+            raise ValueError(f"fatal: ref `{ref_name}` is not a ref")
         repo_obj.refs.set_symbolic_ref(b"HEAD", ref_path)
 
 
@@ -278,10 +278,7 @@ def init(path=".", bare=False):
     if not os.path.exists(path):
         os.mkdir(path)
 
-    if bare:
-        return Repo.init_bare(path)
-    else:
-        return Repo.init(path)
+    return Repo.init_bare(path) if bare else Repo.init(path)
 
 
 def clone(
@@ -329,11 +326,7 @@ def clone(
     if not os.path.exists(target):
         os.mkdir(target)
 
-    if bare:
-        r = Repo.init_bare(target)
-    else:
-        r = Repo.init(target)
-
+    r = Repo.init_bare(target) if bare else Repo.init(target)
     reflog_message = b"clone: from " + source.encode("utf-8")
     try:
         fetch_result = fetch(
@@ -390,7 +383,7 @@ def add(repo=".", paths=None):
             paths = [paths]
         for p in paths:
             relpath = os.path.relpath(p, r.path)
-            if relpath.startswith(".." + os.path.sep):
+            if relpath.startswith(f"..{os.path.sep}"):
                 raise ValueError("path %r is not in repo" % relpath)
             # FIXME: Support patterns, directories.
             if ignore_manager.is_ignored(relpath):
@@ -415,7 +408,7 @@ def remove(repo=".", paths=None, cached=False):
             try:
                 index_sha = index[tree_path].sha
             except KeyError:
-                raise Exception("%s did not match any files" % p)
+                raise Exception(f"{p} did not match any files")
 
             if not cached:
                 try:
@@ -435,14 +428,14 @@ def remove(repo=".", paths=None, cached=False):
                         except KeyError:
                             committed_sha = None
 
-                        if blob.id != index_sha and index_sha != committed_sha:
+                        if blob.id != index_sha != committed_sha:
                             raise Exception(
                                 "file has staged content differing "
                                 "from both the file and head: %s" % p
                             )
 
                         if index_sha != committed_sha:
-                            raise Exception("file has staged changes: %s" % p)
+                            raise Exception(f"file has staged changes: {p}")
                         os.remove(full_path)
             del index[tree_path]
         index.write()
@@ -471,14 +464,14 @@ def print_commit(commit, decode, outstream=sys.stdout):
             + "...".join([c.decode("ascii") for c in commit.parents[1:]])
             + "\n"
         )
-    outstream.write("Author: " + decode(commit.author) + "\n")
+    outstream.write(f"Author: {decode(commit.author)}" + "\n")
     if commit.author != commit.committer:
-        outstream.write("Committer: " + decode(commit.committer) + "\n")
+        outstream.write(f"Committer: {decode(commit.committer)}" + "\n")
 
     time_tuple = time.gmtime(commit.author_time + commit.author_timezone)
     time_str = time.strftime("%a %b %d %Y %H:%M:%S", time_tuple)
     timezone_str = format_timezone(commit.author_timezone).decode("ascii")
-    outstream.write("Date:   " + time_str + " " + timezone_str + "\n")
+    outstream.write(f"Date:   {time_str} {timezone_str}" + "\n")
     outstream.write("\n")
     outstream.write(decode(commit.message) + "\n")
     outstream.write("\n")
@@ -491,8 +484,8 @@ def print_tag(tag, decode, outstream=sys.stdout):
     :param decode: Function for decoding bytes to unicode string
     :param outstream: A stream to write to
     """
-    outstream.write("Tagger: " + decode(tag.tagger) + "\n")
-    outstream.write("Date:   " + decode(tag.tag_time) + "\n")
+    outstream.write(f"Tagger: {decode(tag.tagger)}" + "\n")
+    outstream.write(f"Date:   {decode(tag.tag_time)}" + "\n")
     outstream.write("\n")
     outstream.write(decode(tag.message) + "\n")
     outstream.write("\n")
@@ -758,8 +751,7 @@ def tag_list(repo, outstream=sys.stdout):
     :param outstream: Stream to write tags to
     """
     with open_repo_closing(repo) as r:
-        tags = sorted(r.refs.as_dict(b"refs/tags"))
-        return tags
+        return sorted(r.refs.as_dict(b"refs/tags"))
 
 
 def tag_delete(repo, name):
@@ -827,10 +819,7 @@ def push(
             new_refs = {}
             # TODO: Handle selected_refs == {None: None}
             for (lh, rh, force) in selected_refs:
-                if lh is None:
-                    new_refs[rh] = ZERO_SHA
-                else:
-                    new_refs[rh] = r.refs[lh]
+                new_refs[rh] = ZERO_SHA if lh is None else r.refs[lh]
             return new_refs
 
         err_encoding = getattr(errstream, "encoding", None) or DEFAULT_ENCODING
@@ -917,7 +906,9 @@ def status(repo=".", ignored=False):
         index = r.open_index()
         unstaged_changes = list(get_unstaged_changes(index, r.path))
         ignore_manager = IgnoreFilterManager.from_repo(r)
-        untracked_paths = get_untracked_paths(r.path, r.path, index, ignore_manager if not ignored else None)
+        untracked_paths = get_untracked_paths(
+            r.path, r.path, index, None if ignored else ignore_manager
+        )
         if ignored:
             untracked_changes = list(untracked_paths)
         else:
@@ -1098,10 +1089,7 @@ def branch_delete(repo, name):
     :param name: Name of the branch
     """
     with open_repo_closing(repo) as r:
-        if isinstance(name, list):
-            names = name
-        else:
-            names = [name]
+        names = name if isinstance(name, list) else [name]
         for name in names:
             del r.refs[_make_branch_ref(name)]
 
@@ -1122,9 +1110,8 @@ def branch_create(repo, name, objectish=None, force=False):
         ref_message = b"branch: Created from " + objectish.encode("utf-8")
         if force:
             r.refs.set_if_equals(refname, None, object.id, message=ref_message)
-        else:
-            if not r.refs.add_if_new(refname, object.id, message=ref_message):
-                raise KeyError("Branch with name %s already exists." % name)
+        elif not r.refs.add_if_new(refname, object.id, message=ref_message):
+            raise KeyError(f"Branch with name {name} already exists.")
 
 
 def branch_list(repo):
@@ -1302,10 +1289,7 @@ def update_head(repo, target, detached=False, new_branch=None):
     :param new_branch: New branch to create
     """
     with open_repo_closing(repo) as r:
-        if new_branch is not None:
-            to_set = _make_branch_ref(new_branch)
-        else:
-            to_set = b"HEAD"
+        to_set = _make_branch_ref(new_branch) if new_branch is not None else b"HEAD"
         if detached:
             # TODO(jelmer): Provide some way so that the actual ref gets
             # updated rather than what it points to, so the delete isn't
@@ -1426,34 +1410,27 @@ def describe(repo):
 
         # If there are no tags, return the current commit
         if len(sorted_tags) == 0:
-            return "g{}".format(r[r.head()].id.decode("ascii")[:7])
-
-        # We're now 0 commits from the top
-        commit_count = 0
+            return f'g{r[r.head()].id.decode("ascii")[:7]}'
 
         # Get the latest commit
         latest_commit = r[r.head()]
 
         # Walk through all commits
         walker = r.get_walker()
-        for entry in walker:
+        for commit_count, entry in enumerate(walker):
             # Check if tag
             commit_id = entry.commit.id.decode("ascii")
             for tag in sorted_tags:
-                tag_name = tag[0]
                 tag_commit = tag[1][1]
                 if commit_id == tag_commit:
+                    tag_name = tag[0]
                     if commit_count == 0:
                         return tag_name
                     else:
-                        return "{}-{}-g{}".format(
-                            tag_name, commit_count, latest_commit.id.decode("ascii")[:7]
-                        )
-
-            commit_count += 1
+                        return f'{tag_name}-{commit_count}-g{latest_commit.id.decode("ascii")[:7]}'
 
         # Return plain commit if no parent tag can be found
-        return "g{}".format(latest_commit.id.decode("ascii")[:7])
+        return f'g{latest_commit.id.decode("ascii")[:7]}'
 
 
 def get_object_by_path(repo, path, committish=None):

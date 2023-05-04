@@ -44,7 +44,7 @@ class RunInfoConfig(config.Config):
 
         machine = environ.get(ENV_DBND__ENV_MACHINE, "")
         if environ.get(ENV_DBND__ENV_IMAGE, None):
-            machine += " image=%s" % environ.get(ENV_DBND__ENV_IMAGE)
+            machine += f" image={environ.get(ENV_DBND__ENV_IMAGE)}"
         return TaskRunEnvInfo(
             uid=task_run_env_uid,
             databand_version=dbnd.__version__,

@@ -90,11 +90,16 @@ _invalid_ident_char_re = re.compile(r'[^a-zA-Z0-9_]')
 def get_completion_script(prog_name, complete_var, shell):
     cf_name = _invalid_ident_char_re.sub('', prog_name.replace('-', '_'))
     script = COMPLETION_SCRIPT_ZSH if shell == 'zsh' else COMPLETION_SCRIPT_BASH
-    return (script % {
-        'complete_func': '_%s_completion' % cf_name,
-        'script_names': prog_name,
-        'autocomplete_var': complete_var,
-    }).strip() + ';'
+    return (
+        (
+            script
+            % {
+                'complete_func': f'_{cf_name}_completion',
+                'script_names': prog_name,
+                'autocomplete_var': complete_var,
+            }
+        )
+    ).strip() + ';'
 
 
 def resolve_ctx(cli, prog_name, args):
@@ -108,29 +113,28 @@ def resolve_ctx(cli, prog_name, args):
     ctx = cli.make_context(prog_name, args, resilient_parsing=True)
     args = ctx.protected_args + ctx.args
     while args:
-        if isinstance(ctx.command, MultiCommand):
-            if not ctx.command.chain:
+        if not isinstance(ctx.command, MultiCommand):
+            break
+        if not ctx.command.chain:
+            cmd_name, cmd, args = ctx.command.resolve_command(ctx, args)
+            if cmd is None:
+                return ctx
+            ctx = cmd.make_context(cmd_name, args, parent=ctx,
+                                   resilient_parsing=True)
+            args = ctx.protected_args + ctx.args
+        else:
+            # Walk chained subcommand contexts saving the last one.
+            while args:
                 cmd_name, cmd, args = ctx.command.resolve_command(ctx, args)
                 if cmd is None:
                     return ctx
-                ctx = cmd.make_context(cmd_name, args, parent=ctx,
-                                       resilient_parsing=True)
-                args = ctx.protected_args + ctx.args
-            else:
-                # Walk chained subcommand contexts saving the last one.
-                while args:
-                    cmd_name, cmd, args = ctx.command.resolve_command(ctx, args)
-                    if cmd is None:
-                        return ctx
-                    sub_ctx = cmd.make_context(cmd_name, args, parent=ctx,
-                                               allow_extra_args=True,
-                                               allow_interspersed_args=False,
-                                               resilient_parsing=True)
-                    args = sub_ctx.args
-                ctx = sub_ctx
-                args = sub_ctx.protected_args + sub_ctx.args
-        else:
-            break
+                sub_ctx = cmd.make_context(cmd_name, args, parent=ctx,
+                                           allow_extra_args=True,
+                                           allow_interspersed_args=False,
+                                           resilient_parsing=True)
+                args = sub_ctx.args
+            ctx = sub_ctx
+            args = sub_ctx.protected_args + sub_ctx.args
     return ctx
 
 
@@ -161,7 +165,7 @@ def is_incomplete_option(all_args, cmd_param):
         if start_of_option(arg_str):
             last_option = arg_str
 
-    return True if last_option and last_option in cmd_param.opts else False
+    return bool(last_option and last_option in cmd_param.opts)
 
 
 def is_incomplete_argument(current_params, cmd_param):
@@ -178,10 +182,11 @@ def is_incomplete_argument(current_params, cmd_param):
         return True
     if cmd_param.nargs == -1:
         return True
-    if isinstance(current_param_values, abc.Iterable) \
-            and cmd_param.nargs > 1 and len(current_param_values) < cmd_param.nargs:
-        return True
-    return False
+    return (
+        isinstance(current_param_values, abc.Iterable)
+        and cmd_param.nargs > 1
+        and len(current_param_values) < cmd_param.nargs
+    )
 
 
 def get_user_autocompletions(ctx, args, incomplete, cmd_param):
@@ -306,6 +311,6 @@ def bashcomplete(cli, prog_name, complete_var, complete_instr):
         shell = 'zsh' if complete_instr == 'source_zsh' else 'bash'
         echo(get_completion_script(prog_name, complete_var, shell))
         return True
-    elif complete_instr == 'complete' or complete_instr == 'complete_zsh':
+    elif complete_instr in ['complete', 'complete_zsh']:
         return do_complete(cli, prog_name, complete_instr == 'complete_zsh')
     return False

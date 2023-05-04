@@ -22,8 +22,7 @@ class PipelineTask(Task):
 
     def _task_run(self):
         """We override, as we don't want to automatically load deferred inputs as we do it in regular task."""
-        result = self.run()
-        return result
+        return self.run()
 
     @abc.abstractmethod
     def band(self):

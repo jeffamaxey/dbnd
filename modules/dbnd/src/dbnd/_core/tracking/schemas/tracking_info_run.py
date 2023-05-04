@@ -101,14 +101,10 @@ class RootRunInfo(_DbndDataClass):
 
     @classmethod
     def from_env(cls, current_run):
-        # type: (DatabandRun) -> RootRunInfo
-        parent_run = try_get_databand_run()
-        if parent_run:
+        if parent_run := try_get_databand_run():
             # take from parent
             root_run_info = parent_run.root_run_info
-            # update parent run info if required
-            root_task_run = try_get_current_task_run()
-            if root_task_run:
+            if root_task_run := try_get_current_task_run():
                 root_run_info = attr.evolve(
                     root_run_info,
                     root_task_run_uid=root_task_run.task_run_uid,
@@ -139,8 +135,7 @@ class RootRunInfo(_DbndDataClass):
 
 
 def get_from_env_or_spark_env(key):
-    value = os.environ.get(key)
-    if value:
+    if value := os.environ.get(key):
         return value
 
     return get_value_from_spark_env(key)

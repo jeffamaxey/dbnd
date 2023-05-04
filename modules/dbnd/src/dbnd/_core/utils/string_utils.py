@@ -34,7 +34,7 @@ def clean_job_name(
     value = camel_to_snake(value, placeholder=placeholder)
     enabled_characters = re.escape(enabled_characters)
     # clean all garbage
-    value = re.sub(r"[^a-z0-9%s]" % enabled_characters, placeholder, value)
+    value = re.sub(f"[^a-z0-9{enabled_characters}]", placeholder, value)
 
     # clean all duplicated special charaters:  .-  or -- or ___
     value = re.sub(
@@ -68,9 +68,7 @@ def clean_job_name(
 
 
 def str_or_none(value):
-    if value is None:
-        return None
-    return str(value)
+    return None if value is None else str(value)
 
 
 def safe_short_string(value, max_value_len=1000, tail=False):
@@ -110,30 +108,19 @@ def safe_short_string(value, max_value_len=1000, tail=False):
         if len(value) > max_value_len:
             placeholder = "... (%s of %s)".format(max_value_len, len(value))
             actual_len = max_value_len - len(placeholder)
-            actual_len = 0 if actual_len < 0 else actual_len
+            actual_len = max(actual_len, 0)
             if tail:
-                value = "(%s of %s) ...%s" % (
-                    actual_len,
-                    len(value),
-                    value[len(value) - actual_len :],
-                )
+                value = f"({actual_len} of {len(value)}) ...{value[len(value) - actual_len:]}"
             else:
-                value = "%s... (%s of %s)" % (
-                    value[:actual_len],
-                    actual_len,
-                    len(value),
-                )
+                value = f"{value[:actual_len]}... ({actual_len} of {len(value)})"
         return value
     except Exception as ex:
         # we don't want to fail here
-        return "ERROR: Failed to shorten string: %s" % ex
+        return f"ERROR: Failed to shorten string: {ex}"
 
 
 def pluralize(s, n, plural_form=None):
-    if n == 1:
-        return s
-    else:
-        return plural_form or s + "s"
+    return s if n == 1 else plural_form or f"{s}s"
 
 
 def strip_whitespace(string):
@@ -161,10 +148,10 @@ def merge_dbnd_and_spark_logs(dbnd, spark):
         dbnd_line = None if dbnd_idx >= len(dbnd) else dbnd[dbnd_idx]
         spark_line = None if spark_idx >= len(spark) else spark[spark_idx]
 
-        if spark_line is None and dbnd_line is None:
-            break
-
         if spark_line is None:
+            if dbnd_line is None:
+                break
+
             result.append(dbnd_line)
             dbnd_idx += 1
             continue

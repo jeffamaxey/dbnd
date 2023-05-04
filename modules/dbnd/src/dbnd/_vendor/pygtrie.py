@@ -872,13 +872,11 @@ class Trie(_collections.MutableMapping):
         return self._root != other._root  # pylint: disable=protected-access
 
     def __str__(self):
-        return 'Trie(%s)' % (
-            ', '.join('%s: %s' % item for item in self.iteritems()))
+        return f"Trie({', '.join('%s: %s' % item for item in self.iteritems())})"
 
     def __repr__(self):
         if self:
-            return  'Trie((%s,))' % (
-                ', '.join('(%r, %r)' % item for item in self.iteritems()))
+            return f"Trie(({', '.join('(%r, %r)' % item for item in self.iteritems())},))"
         else:
             return 'Trie()'
 

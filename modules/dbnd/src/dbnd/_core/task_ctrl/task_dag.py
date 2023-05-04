@@ -28,13 +28,11 @@ def _task_list(task_or_task_list):
     for t in task_list:
         if isinstance(t, Target):
             t = t.task
-        airflow_task = _try_get_task_from_airflow_op(t)
-        if airflow_task:
+        if airflow_task := _try_get_task_from_airflow_op(t):
             t = airflow_task
         if not (isinstance(t, _TaskCtrlMixin)):
             raise DatabandError(
-                "Relationships can only be set between "
-                "Databand Tasks; received {}".format(t.__class__.__name__)
+                f"Relationships can only be set between Databand Tasks; received {t.__class__.__name__}"
             )
         task_list_output.append(t)
     return task_list_output
@@ -53,14 +51,11 @@ class _TaskDagNode(TaskSubCtrl):
         upstream = list(filter(None, upstream))
 
         # take care of orphant tasks
-        for child in self.task.descendants.get_children():
-            if not child.task_dag.downstream:
-                # it means there is no other tasks that are waiting for this task
-                # -> we add it to task upstream
-                # other options would be child is required by Parent task,
-                # but it's not added yet ( anyway we create unique list)
-                upstream.append(child)
-
+        upstream.extend(
+            child
+            for child in self.task.descendants.get_children()
+            if not child.task_dag.downstream
+        )
         upstream = set(upstream)
         for upstream_task in upstream:
             self.set_upstream(upstream_task)
@@ -143,13 +138,11 @@ class _TaskDagNode(TaskSubCtrl):
             for t_connected_task_id in t_dag._direction(upstream):
                 if t_connected_task_id in seen:
                     continue
-                connected_task = self.get_task_by_task_id(t_connected_task_id)
-                if not connected_task:
-                    raise DatabandError(
-                        "Can't resolve task %s by it's id" % t_connected_task_id
-                    )
-                to_process.append(connected_task)
+                if connected_task := self.get_task_by_task_id(t_connected_task_id):
+                    to_process.append(connected_task)
 
+                else:
+                    raise DatabandError(f"Can't resolve task {t_connected_task_id} by it's id")
         return set(result)
 
     def set_relatives(self, task_or_task_list, upstream=False):
@@ -190,9 +183,7 @@ class _TaskDagNode(TaskSubCtrl):
         tasks = tasks or self.subdag_tasks()
         selected = []
         for task_regex in tasks_regexes:
-            for t in tasks:
-                if re.findall(task_regex, t.task_id):
-                    selected.append(t)
+            selected.extend(t for t in tasks if re.findall(task_regex, t.task_id))
         if not selected:
             raise friendly_error.no_matching_tasks_in_pipeline(
                 tasks=tasks, tasks_regexes=tasks_regexes

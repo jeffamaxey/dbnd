@@ -13,12 +13,9 @@ def parse_bool(s):
     elif val.lower() in ("f", "false", "no", "0"):
         return False
     else:
-        raise ValueError("Can't parse '%s' as boolean" % s)
+        raise ValueError(f"Can't parse '{s}' as boolean")
 
 
 def indent(string, prefix):
     """a backward compatible textwrap.indent replacement"""
-    if not string:
-        return ""
-
-    return "\n".join(prefix + l for l in string.splitlines())
+    return "\n".join(prefix + l for l in string.splitlines()) if string else ""

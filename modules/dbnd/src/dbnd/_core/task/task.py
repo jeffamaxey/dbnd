@@ -201,17 +201,16 @@ class Task(_TaskWithParams, _TaskCtrlMixin, _TaskParamContainer):
         outputs = [
             o for o in flatten(self.task_outputs) if not o.config.overwrite_target
         ]
-        if len(outputs) == 0:
-            if not self.task_band:
-                warnings.warn(
-                    "Task %r without outputs has no custom complete() and no task band!"
-                    % self,
-                    stacklevel=2,
-                )
-                return False
-            else:
+        if not outputs:
+            if self.task_band:
                 return self.task_band.exists()
 
+            warnings.warn(
+                "Task %r without outputs has no custom complete() and no task band!"
+                % self,
+                stacklevel=2,
+            )
+            return False
         incomplete_outputs = [str(o) for o in outputs if not o.exists()]
 
         num_of_incomplete_outputs = len(incomplete_outputs)
@@ -286,7 +285,7 @@ class Task(_TaskWithParams, _TaskCtrlMixin, _TaskParamContainer):
             "task_signature": self.task_signature,
             "task_id": self.task_id,
         }
-        base.update(self._params.get_params_serialized(ParameterFilters.INPUTS))
+        base |= self._params.get_params_serialized(ParameterFilters.INPUTS)
         if self.task_target_date is None:
             base["task_target_date"] = "input"
         return base
@@ -393,8 +392,7 @@ class Task(_TaskWithParams, _TaskCtrlMixin, _TaskParamContainer):
         from dbnd._core.current import get_databand_context
 
         ctx = get_databand_context()
-        run = ctx.dbnd_run_task(self)
-        return run
+        return ctx.dbnd_run_task(self)
 
 
 @contextmanager

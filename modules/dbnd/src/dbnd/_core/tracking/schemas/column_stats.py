@@ -118,9 +118,7 @@ class ColumnStatsArgs:
         """
 
         def _numberic_stats_filter(_, value) -> bool:
-            if isinstance(value, (int, float)) and not isinstance(value, bool):
-                return True
-            return False
+            return isinstance(value, (int, float)) and not isinstance(value, bool)
 
         return self.get_stats(stats_filter=_numberic_stats_filter)
 

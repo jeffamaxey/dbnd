@@ -116,18 +116,12 @@ class DecoratedCallableParamBuilder(object):
             if k not in self.callable_spec.args and k not in self.base_params:
                 # we have parameter which is not part of real function signature
                 # @task(some_unknown_parameter=parameter)
-                logger.info(
-                    "{} is not part of parameters, creating hidden parameter".format(
-                        context
-                    )
-                )
+                logger.info(f"{context} is not part of parameters, creating hidden parameter")
 
             if k in self.callable_spec.defaults:
                 if isinstance(self.callable_spec.defaults[k], ParameterFactory):
                     raise DatabandBuildError(
-                        "{}: {} has conlficted definition in function and in decorator itself".format(
-                            context, k
-                        )
+                        f"{context}: {k} has conlficted definition in function and in decorator itself"
                     )
                 if is_defined(param.parameter.default):
                     logger.warning(
@@ -148,27 +142,22 @@ class DecoratedCallableParamBuilder(object):
         context = self._get_param_context(RESULT_PARAM)
         res = []
         for i, lv in enumerate(result_deco_spec):
-            lv = build_parameter(lv, context="%s.%s" % (context, i))
+            lv = build_parameter(lv, context=f"{context}.{i}")
 
             if not lv.name:
-                raise DatabandBuildError(
-                    "{}[{}]: {} should have name".format(context, i, type(lv))
-                )
+                raise DatabandBuildError(f"{context}[{i}]: {type(lv)} should have name")
             if not lv.is_output():
-                raise DatabandBuildError(
-                    "{}[{}]: {} should marked as output".format(context, i, type(lv))
-                )
+                raise DatabandBuildError(f"{context}[{i}]: {type(lv)} should marked as output")
 
             res.append(lv)
 
-        param = FuncResultParameter(
+        return FuncResultParameter(
             schema=res,
             value_type=DefaultObjectValueType(),
             name=RESULT_PARAM,
             significant=False,
             kind=_ParameterKind.task_output,
         )
-        return param
 
     def _get_result_parameter_part(self, p, name_hint, value_type_hint):
         if isinstance(p, six.string_types):
@@ -179,9 +168,6 @@ class DecoratedCallableParamBuilder(object):
             # we got a type  - it's inline type of parameter
             value_type_hint = get_value_type_of_type(p, inline_value_type=True)
             p = None
-        else:
-            pass
-
         if p is None:
             if value_type_hint:
                 # we create based on value type
@@ -260,12 +246,13 @@ class DecoratedCallableParamBuilder(object):
                     _, value_type_hint = return_spec[i]
 
                 deco_p = self._get_result_parameter_part(
-                    p=deco_p, name_hint="result_%s" % i, value_type_hint=value_type_hint
+                    p=deco_p,
+                    name_hint=f"result_{i}",
+                    value_type_hint=value_type_hint,
                 )
                 result.append(deco_p)
             param = self._build_multiple_outputs_result(result)
 
-        # 2. we have only one result-->
         else:
             param = self._get_result_parameter_part(
                 p=deco_spec, name_hint=RESULT_PARAM, value_type_hint=return_spec
@@ -287,10 +274,10 @@ class DecoratedCallableParamBuilder(object):
         self._validate_result_params()
 
     def _validate_result_params(self):
-        conflict_keys = set(self.result_params.keys()).intersection(
-            set(self.decorator_kwargs_params.keys()) | set(self.func_spec_params.keys())
-        )
-        if conflict_keys:
+        if conflict_keys := set(self.result_params.keys()).intersection(
+            set(self.decorator_kwargs_params.keys())
+            | set(self.func_spec_params.keys())
+        ):
             raise friendly_error.task_parameters.result_and_params_have_same_keys(
                 self._context, conflict_keys
             )
@@ -303,7 +290,7 @@ class DecoratedCallableParamBuilder(object):
         if result_param:
             result_params[RESULT_PARAM] = result_param
             if isinstance(result_param, FuncResultParameter):
-                result_params.update({p.name: p for p in result_param.schema})
+                result_params |= {p.name: p for p in result_param.schema}
         return result_params
 
     def _validate_return_spec(self, deco_spec, return_spec):
@@ -342,4 +329,4 @@ class DecoratedCallableParamBuilder(object):
         return return_spec
 
     def _get_param_context(self, param_name):
-        return "%s.%s" % (self._context, param_name)
+        return f"{self._context}.{param_name}"

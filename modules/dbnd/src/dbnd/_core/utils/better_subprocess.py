@@ -28,7 +28,7 @@ def run_cmd(
 ):
     if env:
         os_env = os.environ.copy()
-        os_env.update(env)
+        os_env |= env
         kwargs["env"] = os_env
 
     sp = subprocess.Popen(

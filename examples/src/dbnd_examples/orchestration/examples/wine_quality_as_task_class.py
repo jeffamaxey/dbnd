@@ -24,7 +24,7 @@ test_data_csv = data_repo.wines
 
 
 def _split(df):
-    return df.head(int(len(df) / 2)), df.tail(int(len(df) / 2))
+    return df.head(len(df) // 2), df.tail(len(df) // 2)
 
 
 def calculate_metrics(actual, pred):
@@ -124,7 +124,7 @@ class ValidateModel(PythonTask):
         log_metric("mae", rmse)
         log_metric("r2", r2)
 
-        self.model_metrics.write("%s,%s,%s" % (rmse, mae, r2))
+        self.model_metrics.write(f"{rmse},{mae},{r2}")
 
 
 class PredictWineQuality(PipelineTask):

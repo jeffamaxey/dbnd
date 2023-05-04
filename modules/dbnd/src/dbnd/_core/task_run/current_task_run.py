@@ -15,15 +15,12 @@ logger = logging.getLogger(__name__)
 
 
 def try_get_or_create_task_run():
-    # type: ()-> Optional[TaskRun]
-    task_run = try_get_current_task_run()
-    if task_run:
+    if task_run := try_get_current_task_run():
         return task_run
 
     from dbnd._core.configuration.environ_config import DBND_TASK_RUN_ATTEMPT_UID
 
-    tra_uid = os.environ.get(DBND_TASK_RUN_ATTEMPT_UID)
-    if tra_uid:
+    if tra_uid := os.environ.get(DBND_TASK_RUN_ATTEMPT_UID):
         return _get_task_run_mock(tra_uid)
 
     from dbnd._core.tracking.script_tracking_manager import (

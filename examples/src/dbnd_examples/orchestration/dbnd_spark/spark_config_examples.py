@@ -35,11 +35,7 @@ class AdvancedSparkConfigExample(PySparkInlineTask):
         # for that, as all config objects are calculated and created already.
 
         # we can change some spark config param based on other param
-        if self.env == "local":
-            self.spark_config.driver_memory = "2G"
-        else:
-            self.spark_config.driver_memory = "4G"
-
+        self.spark_config.driver_memory = "2G" if self.env == "local" else "4G"
         self.my_p = 10
 
     def run(self):
@@ -63,22 +59,17 @@ class AdvancedConfigTaskMetaclass(TaskMetaclass):
     The Metaclass of :py:class:`Task`.
     """
 
-    def __call__(cls, *args, **kwargs):
+    def __call__(self, *args, **kwargs):
         """
         Extension of Task Metaclass, we want to add our own configuration based on some values
         so the moment task is created, that config is used.
         """
 
-        config_values = cls.get_custom_config()
+        config_values = self.get_custom_config()
 
         # create new config layer, so when we are out of this process -> config is back to the previous value
-        with config(
-            config_values=config_values,
-            source=cls.task_definition.task_passport.format_source_name(
-                ".get_custom_config"
-            ),
-        ):
-            return super(AdvancedConfigTaskMetaclass, cls).__call__(*args, **kwargs)
+        with config(config_values=config_values, source=self.task_definition.task_passport.format_source_name(".get_custom_config")):
+            return super(AdvancedConfigTaskMetaclass, self).__call__(*args, **kwargs)
 
 
 @six.add_metaclass(AdvancedConfigTaskMetaclass)

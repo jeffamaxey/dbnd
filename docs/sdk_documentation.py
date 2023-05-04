@@ -33,8 +33,7 @@ class Document:
 def _request_url(verb, url, payload=None):
     request = requests.request(method=verb, url=url, json=payload, headers=headers)
     _check_status_code(request)
-    response = request.json()
-    return response
+    return request.json()
 
 
 def _check_status_code(request):
@@ -47,23 +46,22 @@ def _check_status_code(request):
 def _get_categories():
     url = "https://dash.readme.com/api/v1/categories"
     response = _request_url("GET", url)
-    categories = [
-        (x["slug"], x["_id"]) for x in response if x["slug"] in wanted_categories
+    return [
+        (x["slug"], x["_id"])
+        for x in response
+        if x["slug"] in wanted_categories
     ]
-    return categories
 
 
 def _get_docs_from_category(category_slug: str):
     url = f"https://dash.readme.com/api/v1/categories/{category_slug}/docs"
-    response = _request_url("GET", url)
-    return response
+    return _request_url("GET", url)
 
 
 def _get_doc_body(slug: str):
     url = f"https://dash.readme.com/api/v1/docs/{slug}"
     response = _request_url("GET", url)
-    body = response["body"]
-    return body
+    return response["body"]
 
 
 def _delete_doc(slug: str):
@@ -87,10 +85,8 @@ def _update_doc(file_path: str, document: Document, category_id: str):
         payload["parentDoc"] = document.parent_id
 
     url = f"https://dash.readme.com/api/v1/docs/{document.slug}"
-    page_info = re.match(page_info_pattern, body, re.DOTALL)
-
-    if page_info:
-        page_info = json.loads(f"{{{page_info.group(1)}}}")
+    if page_info := re.match(page_info_pattern, body, re.DOTALL):
+        page_info = json.loads(f"{{{page_info[1]}}}")
         document.title = page_info["title"]
         payload["title"] = document.title
 
@@ -115,7 +111,7 @@ def _create_doc(body: str, category: str, document: Document):
     page_info = re.match(page_info_pattern, body, re.DOTALL)
     document.title = document.slug
     if page_info:
-        page_info = json.loads(f"{{{page_info.group(1)}}}")
+        page_info = json.loads(f"{{{page_info[1]}}}")
         document.title = page_info["title"]
         payload["title"] = document.title
         url += f"/{document.slug}"
@@ -191,7 +187,7 @@ def update_docs_in_category(category_slug, category_id, remove_nonexisting=False
     for document in parent_docs:
         file_path = f"{output_folder}{category_slug}/{document.slug}"
 
-        if not os.path.exists(file_path + ".md") and remove_nonexisting:
+        if not os.path.exists(f"{file_path}.md") and remove_nonexisting:
             if os.path.exists(file_path):
                 shutil.rmtree(file_path)
             for child in child_docs:
@@ -201,7 +197,7 @@ def update_docs_in_category(category_slug, category_id, remove_nonexisting=False
             _delete_doc(document.slug)
             continue
 
-        _update_doc(file_path + ".md", document, category_id)
+        _update_doc(f"{file_path}.md", document, category_id)
 
     for document in child_docs:
         file_path = (
@@ -225,7 +221,7 @@ def add_docs_to_category(category_slug, category_id):
         clean_slug = slug[:-3]
         if not os.path.exists(category_path + clean_slug):
             os.makedirs(category_path + clean_slug)
-        if not clean_slug in parent_docs:
+        if clean_slug not in parent_docs:
             with open(category_path + slug, "r") as file:
                 body = file.read()
             _create_doc(body, category_id, Document(clean_slug))

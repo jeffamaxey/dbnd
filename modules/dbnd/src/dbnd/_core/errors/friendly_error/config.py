@@ -13,8 +13,7 @@ if typing.TYPE_CHECKING:
 
 def wrong_func_attr_format(attr_path):
     return DatabandConfigError(
-        "Wrong format for code path:  got '%s' instead of  module_ref.module.name"
-        % attr_path
+        f"Wrong format for code path:  got '{attr_path}' instead of  module_ref.module.name"
     )
 
 
@@ -31,10 +30,8 @@ def task_name_and_from_are_the_same(section, param):
 
 def env_section_not_found(section):
     return DatabandConfigError(
-        "%s is listed in your `environments` list but a config section with this name could not be found"
-        % section,
-        help_msg="Please add a config section [%s] that configures the environment or remove it from the environment list"
-        % section,
+        f"{section} is listed in your `environments` list but a config section with this name could not be found",
+        help_msg=f"Please add a config section [{section}] that configures the environment or remove it from the environment list",
     )
 
 
@@ -58,19 +55,19 @@ def no_credentials():
 
 
 def scheduled_job_missing_param(field):
-    return DatabandConfigError("Scheduled job %s must be defined" % field)
+    return DatabandConfigError(f"Scheduled job {field} must be defined")
 
 
 def scheduled_job_exists(name):
     return DatabandConfigError(
-        "Scheduled job named '%s' already exists" % name,
+        f"Scheduled job named '{name}' already exists",
         help_msg="If you wish to update it add --update to the cli command",
     )
 
 
 def scheduled_job_not_exists(name):
     return DatabandConfigError(
-        "Scheduled job named '%s' does not exists and as such cannot be updated" % name
+        f"Scheduled job named '{name}' does not exists and as such cannot be updated"
     )
 
 
@@ -78,22 +75,21 @@ def scheduled_job_invalid_interval(schedule_interval):
     from dbnd.api.shared_schemas.scheduled_job_schema import SCHEDULE_INTERVAL_PRESETS
 
     return DatabandConfigError(
-        "The schedule_interval '%s' is not valid" % schedule_interval,
-        help_msg="Valid values are any valid cron expression or one of the presets: %s"
-        % ", ".join(SCHEDULE_INTERVAL_PRESETS),
+        f"The schedule_interval '{schedule_interval}' is not valid",
+        help_msg=f'Valid values are any valid cron expression or one of the presets: {", ".join(SCHEDULE_INTERVAL_PRESETS)}',
     )
 
 
 def wrong_store_name(name):
     return DatabandConfigError(
-        "Unsupported tracking store: '{}', use one of file/console/api".format(name),
+        f"Unsupported tracking store: '{name}', use one of file/console/api",
         help_msg="Please check you configuration at [core] tracker.",
     )
 
 
 def wrong_tracking_api_name(name):
     return DatabandConfigError(
-        "Unsupported tracking api: '{}', use one of web/db".format(name),
+        f"Unsupported tracking api: '{name}', use one of web/db",
         help_msg="Please check you configuration at [core] tracker_api.",
     )
 
@@ -111,7 +107,7 @@ def empty_string_validator(param):
     # type: (ParameterDefinition)->ParseParameterError
     return ParseParameterError(
         "{param} has empty string value".format(param=param),
-        help_msg="Please check your configuration for {}".format(param),
+        help_msg=f"Please check your configuration for {param}",
     )
 
 

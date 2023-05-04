@@ -79,7 +79,7 @@ class TestDocDecoratedDags:
         def current_date(p_date=None):
             return p_date
 
-        with DAG(dag_id=f"current_date_dag", default_args=default_args) as dag:
+        with DAG(dag_id="current_date_dag", default_args=default_args) as dag:
             current_date(p_date="{{ ts }}")
         #### DOC END
 
@@ -89,6 +89,6 @@ class TestDocDecoratedDags:
         def current_date(p_date=parameter[str].disable_jinja_templating):
             return p_date
 
-        with DAG(dag_id=f"current_date_dag", default_args=default_args) as dag:
+        with DAG(dag_id="current_date_dag", default_args=default_args) as dag:
             current_date(p_date="{{ ts }}")
         #### DOC END

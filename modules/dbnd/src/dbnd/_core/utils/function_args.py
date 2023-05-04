@@ -21,4 +21,4 @@ def _pop_kwarg(kwargs, key, default=NOTHING, error_msg=None):
         return kwargs.pop(key)
     if is_defined(default):
         return default
-    raise TypeError(error_msg or "%s must be specified" % key)
+    raise TypeError(error_msg or f"{key} must be specified")

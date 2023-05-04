@@ -11,8 +11,7 @@ from dbnd._core.task.base_task import _BaseTask
 def get_remote_engine_name():
     # type: () -> Optional[str]
     """Retrieve the name of the remote engine of the current run if exists, None otherwise."""
-    run = try_get_databand_run()
-    if run:
+    if run := try_get_databand_run():
         return run.run_executor.remote_engine.task_name
 
 

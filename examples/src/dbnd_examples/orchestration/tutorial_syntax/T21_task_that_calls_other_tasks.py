@@ -33,15 +33,13 @@ def prepare_data(df):
 def func_pipeline(p: int):
     df = pd.DataFrame(data=[[p, 1]], columns=["c1", "c2"])
     d1 = prepare_data(df)
-    d2 = prepare_data(d1)
-    return d2
+    return prepare_data(d1)
 
 
 @task
 def func_pipeline2(p: int):
     df = func_return_df()
-    d1 = func_gets(df)
-    return d1
+    return func_gets(df)
 
 
 if __name__ == "__main__":

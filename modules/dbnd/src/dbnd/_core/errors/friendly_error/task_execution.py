@@ -9,29 +9,25 @@ from dbnd._core.errors.friendly_error.helpers import (
 def failed_to_save_value_to_target(ex, task, parameter, target, value):
     if parameter.name == "result":
         return DatabandRuntimeError(
-            "Can't save return value of %s to %s': %s"
-            % (_parameter_name(task, parameter), target, ex),
+            f"Can't save return value of {_parameter_name(task, parameter)} to {target}': {ex}",
             show_exc_info=True,
             nested_exceptions=[ex],
-            help_msg="Check your {} return value "
-            "and it definition ('{}')".format(
-                _run_name(task), parameter.value_type.type
-            ),
+            help_msg=f"Check your {_run_name(task)} return value and it definition ('{parameter.value_type.type}')",
         )
     return DatabandRuntimeError(
-        "Can't save %s to %s': %s" % (_parameter_name(task, parameter), target, ex),
+        f"Can't save {_parameter_name(task, parameter)} to {target}': {ex}",
         show_exc_info=True,
         nested_exceptions=[ex],
-        help_msg="Check your %s logic. " % task.friendly_task_name,
+        help_msg=f"Check your {task.friendly_task_name} logic. ",
     )
 
 
 def failed_to_read_value_from_target(ex, task, parameter, target):
     return DatabandRuntimeError(
-        "Can't read %s from %s': %s" % (_parameter_name(task, parameter), target, ex),
+        f"Can't read {_parameter_name(task, parameter)} from {target}': {ex}",
         show_exc_info=True,
         nested_exceptions=[ex],
-        help_msg="Check your %s logic. " % task.friendly_task_name,
+        help_msg=f"Check your {task.friendly_task_name} logic. ",
     )
 
 
@@ -41,7 +37,7 @@ def failed_to_assign_result(task, result_parameter):
         "it can not be assigned to {schema}".format(
             task=task, schema=result_parameter.schema
         ),
-        help_msg="Check your %s return value" % (_task_name(task)),
+        help_msg=f"Check your {_task_name(task)} return value",
     )
 
 
@@ -82,12 +78,10 @@ def wrong_return_value_len(task_def, names, result):
 
 def failed_to_run_spark_script(task, cmd, application, return_code, error_snippets):
     return DatabandRuntimeError(
-        "spark_submit failed with return code %s. Failed to run: %s"
-        % (return_code, cmd),
+        f"spark_submit failed with return code {return_code}. Failed to run: {cmd}",
         show_exc_info=False,
         nested_exceptions=error_snippets,
-        help_msg="Check your  %s logic and input data %s. Inspect spark logs for more info."
-        % (application, list(task.relations.task_inputs_user.values())),
+        help_msg=f"Check your  {application} logic and input data {list(task.relations.task_inputs_user.values())}. Inspect spark logs for more info.",
     )
 
 
@@ -108,15 +102,14 @@ def failed_spark_status(msg):
 def failed_to_run_emr_step(reason, logs_path, error_snippets):
     if logs_path and error_snippets:
         return DatabandRuntimeError(
-            "EMR Spark step failed with reason: %s " % reason,
+            f"EMR Spark step failed with reason: {reason} ",
             show_exc_info=False,
             nested_exceptions=error_snippets,
             help_msg="Check your application logic. Inspect spark emr logs for more info.\n "
             "Logs are available at %s." % logs_path,
         )
     return DatabandRuntimeError(
-        "EMR Spark step failed with reason: %s. Additionally Databand failed to get EMR logs."
-        % reason,
+        f"EMR Spark step failed with reason: {reason}. Additionally Databand failed to get EMR logs.",
         show_exc_info=False,
         help_msg="Check your application logic. Inspect emr console for logs and more info\n ",
     )
@@ -124,7 +117,7 @@ def failed_to_run_emr_step(reason, logs_path, error_snippets):
 
 def system_exit_at_task_run(task, ex):
     return DatabandRuntimeError(
-        "Task execution has been aborted with sys.exit() call: %s" % ex,
+        f"Task execution has been aborted with sys.exit() call: {ex}",
         nested_exceptions=ex,
         show_exc_info=False,
         help_msg="Check your task run()\n ",

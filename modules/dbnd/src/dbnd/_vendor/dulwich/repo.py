@@ -145,11 +145,7 @@ def parse_graftpoints(graftpoints):
         raw_graft = l.split(None, 1)
 
         commit = raw_graft[0]
-        if len(raw_graft) == 2:
-            parents = raw_graft[1].split()
-        else:
-            parents = []
-
+        parents = raw_graft[1].split() if len(raw_graft) == 2 else []
         for sha in [commit] + parents:
             check_hexsha(sha, "Invalid graftpoint")
 
@@ -328,12 +324,7 @@ class BaseRepo(object):
             # TODO(dborowitz): find a way to short-circuit that doesn't change
             # this interface.
 
-            if shallows or unshallows:
-                # Do not send a pack in shallow short-circuit path
-                return None
-
-            return []
-
+            return None if shallows or unshallows else []
         # If the graph walker is set up with an implementation that can
         # ACK/NAK to the wire, it will write data to the client through
         # this call as a side-effect.
@@ -347,9 +338,7 @@ class BaseRepo(object):
             haves = []
 
         def get_parents(commit):
-            if commit.id in shallows:
-                return []
-            return self.get_parents(commit.id, commit)
+            return [] if commit.id in shallows else self.get_parents(commit.id, commit)
 
         return self.object_store.iter_shas(
             self.object_store.find_missing_objects(
@@ -384,7 +373,7 @@ class BaseRepo(object):
         return self.refs[b"HEAD"]
 
     def _get_object(self, sha, cls):
-        assert len(sha) in (20, 40)
+        assert len(sha) in {20, 40}
         ret = self.get_object(sha)
         if not isinstance(ret, cls):
             if cls is Commit:
@@ -473,7 +462,7 @@ class BaseRepo(object):
         if f is None:
             return set()
         with f:
-            return set(l.strip() for l in f)
+            return {l.strip() for l in f}
 
     def update_shallow(self, new_shallow, new_unshallow):
         """Update the list of shallow objects.
@@ -548,7 +537,7 @@ class BaseRepo(object):
             raise TypeError(
                 "'name' must be bytestring, not %.80s" % type(name).__name__
             )
-        if len(name) in (20, 40):
+        if len(name) in {20, 40}:
             try:
                 return self.object_store[name]
             except (KeyError, ValueError):
@@ -563,7 +552,7 @@ class BaseRepo(object):
 
         :param name: Git object SHA1 or ref name
         """
-        if len(name) in (20, 40):
+        if len(name) in {20, 40}:
             return name in self.object_store or name in self.refs
         else:
             return name in self.refs
@@ -574,15 +563,14 @@ class BaseRepo(object):
         :param name: ref name
         :param value: Ref value - either a ShaFile object, or a hex sha
         """
-        if name.startswith(b"refs/") or name == b"HEAD":
-            if isinstance(value, ShaFile):
-                self.refs[name] = value.id
-            elif isinstance(value, bytes):
-                self.refs[name] = value
-            else:
-                raise TypeError(value)
-        else:
+        if not name.startswith(b"refs/") and name != b"HEAD":
             raise ValueError(name)
+        if isinstance(value, ShaFile):
+            self.refs[name] = value.id
+        elif isinstance(value, bytes):
+            self.refs[name] = value
+        else:
+            raise TypeError(value)
 
     def __delitem__(self, name):
         """Remove a ref.
@@ -617,7 +605,7 @@ class BaseRepo(object):
             import getpass
             import socket
 
-            email = "{}@{}".format(getpass.getuser(), socket.gethostname()).encode(
+            email = f"{getpass.getuser()}@{socket.gethostname()}".encode(
                 sys.getdefaultencoding()
             )
         return user + b" <" + email + b">"
@@ -681,11 +669,11 @@ class BaseRepo(object):
         if tree is None:
             index = self.open_index()
             c.tree = index.commit(self.object_store)
-        else:
-            if len(tree) != 40:
-                raise ValueError("tree must be a 40-byte hex sha string")
+        elif len(tree) == 40:
             c.tree = tree
 
+        else:
+            raise ValueError("tree must be a 40-byte hex sha string")
         try:
             self.hooks["pre-commit"].execute()
         except HookError as e:
@@ -774,12 +762,12 @@ class BaseRepo(object):
             if not ok:
                 # Fail if the atomic compare-and-swap failed, leaving the
                 # commit and all its objects as garbage.
-                raise CommitError("%s changed during commit" % (ref,))
+                raise CommitError(f"{ref} changed during commit")
 
         try:
             self.hooks["post-commit"].execute()
         except HookError as e:  # silent failure
-            warnings.warn("post-commit hook failed: %s" % e, UserWarning)
+            warnings.warn(f"post-commit hook failed: {e}", UserWarning)
         except KeyError:  # no hook defined, silent fallthrough
             pass
 
@@ -848,14 +836,12 @@ class Repo(BaseRepo):
         BaseRepo.__init__(self, object_store, refs)
 
         self._graftpoints = {}
-        graft_file = self.get_named_file(
+        if graft_file := self.get_named_file(
             os.path.join("info", "grafts"), basedir=self.commondir()
-        )
-        if graft_file:
+        ):
             with graft_file:
                 self._graftpoints.update(parse_graftpoints(graft_file))
-        graft_file = self.get_named_file("shallow", basedir=self.commondir())
-        if graft_file:
+        if graft_file := self.get_named_file("shallow", basedir=self.commondir()):
             with graft_file:
                 self._graftpoints.update(parse_graftpoints(graft_file))
 
@@ -1063,9 +1049,9 @@ class Repo(BaseRepo):
         """
         if not bare:
             target = self.init(target_path, mkdir=mkdir)
+        elif checkout:
+            raise ValueError("checkout and bare are incompatible")
         else:
-            if checkout:
-                raise ValueError("checkout and bare are incompatible")
             target = self.init_bare(target_path, mkdir=mkdir)
         self.fetch(target)
         encoded_path = self.path
@@ -1324,9 +1310,7 @@ class MemoryRepo(BaseRepo):
         :return: An open file object, or None if the file does not exist.
         """
         contents = self._named_files.get(path, None)
-        if contents is None:
-            return None
-        return BytesIO(contents)
+        return None if contents is None else BytesIO(contents)
 
     def open_index(self):
         """Fail to open index for this repo, since it is bare.

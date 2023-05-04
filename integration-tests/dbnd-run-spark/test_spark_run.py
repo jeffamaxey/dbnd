@@ -62,10 +62,9 @@ class TestSparkRun(object):
         stderr = result.stderr.decode()
         assert "Your run has been successfully executed!" in stdout, stdout
         assert "Running Spark" in stderr, stderr
-        files = [
-            x
-            for x in glob.glob(
+        files = list(
+            glob.glob(
                 "data/dbnd/log/*/*word_count_plain*/**/1-spark.log", recursive=True
             )
-        ]
+        )
         assert len(files) == 3

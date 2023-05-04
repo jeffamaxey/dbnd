@@ -41,8 +41,7 @@ def _to_task(value):
         # if it doesn't have an source
         return None
 
-    airflow_op_task = _try_get_task_from_airflow_op(value)
-    if airflow_op_task:
+    if airflow_op_task := _try_get_task_from_airflow_op(value):
         return airflow_op_task
 
     logger.debug("Can't convert '%s' to task.", value)
@@ -65,8 +64,7 @@ def _to_target(value, from_string_kwargs=None):
             return value.result
         return value.task_outputs
 
-    airflow_op_task = _try_get_task_from_airflow_op(value)
-    if airflow_op_task:
+    if airflow_op_task := _try_get_task_from_airflow_op(value):
         return airflow_op_task.task_outputs
 
     if isinstance(value, six.string_types):
@@ -94,16 +92,14 @@ def targets_to_str(obj_or_struct):
 
 def target_to_str(obj):
     # type: (Any) -> str
-    if isinstance(obj, six.string_types):
-        return obj
-    return str(obj)
+    return obj if isinstance(obj, six.string_types) else str(obj)
 
 
 def tasks_summary(tasks):
     if not tasks:
         return ""
     tasks_count = [
-        "%s %s" % (count, key)
+        f"{count} {key}"
         for key, count in Counter((t.task_name for t in tasks)).most_common()
     ]
     return "{stats}  - total {total}".format(
@@ -112,7 +108,7 @@ def tasks_summary(tasks):
 
 
 def tasks_to_ids_set(tasks):
-    return set(t.task_id for t in tasks)
+    return {t.task_id for t in tasks}
 
 
 def calculate_friendly_task_ids(tasks):
@@ -124,7 +120,7 @@ def calculate_friendly_task_ids(tasks):
         sorted_tasks = sorted(tasks, key=lambda t: t.task_creation_id)
         for i, task in enumerate(sorted_tasks):
             if i > 0 or len(sorted_tasks) > 1:
-                task_af_id = "{}_{}".format(task.task_name, i)
+                task_af_id = f"{task.task_name}_{i}"
             else:
                 task_af_id = task.task_name
             task_friendly_ids[task.task_id] = task_af_id

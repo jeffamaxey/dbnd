@@ -104,7 +104,7 @@ class SqlOperation:
         for col in self.extracted_columns:
             if col.is_file or col.is_stage:
                 if file_schema:
-                    dtypes.update(file_schema)
+                    dtypes |= file_schema
                 else:
                     continue
             if col.is_wildcard:
@@ -112,10 +112,9 @@ class SqlOperation:
                 dtypes.update(all_columns)
             else:
                 col_name = col.name.strip('"')
-                col_type = tables_schemas.get(col.dataset_name, {}).get(
+                if col_type := tables_schemas.get(col.dataset_name, {}).get(
                     col_name.lower()
-                )
-                if col_type:
+                ):
                     dtypes[col_name] = col_type
         return dtypes if dtypes else None
 
@@ -123,10 +122,11 @@ class SqlOperation:
         schema: Schema = defaultdict(list)
         for name, cols in self.extracted_schema.items():
             for col in cols:
-                if not col.is_file:
-                    table_name = render_table_name(connection, col.dataset_name)
-                else:
-                    table_name = col.dataset_name
+                table_name = (
+                    col.dataset_name
+                    if col.is_file
+                    else render_table_name(connection, col.dataset_name)
+                )
                 col = attr.evolve(col, dataset_name=table_name)
                 schema[name].append(col)
 
@@ -142,8 +142,7 @@ def render_table_name(connection: Connection, table_name: str, sep: str = ".") -
     database, schema, table = split_table_name(table_name)
     database = connection.database or database
     schema = connection.schema or schema
-    path = sep.join(map(strip_quotes, filter(None, [database, schema, table])))
-    return path
+    return sep.join(map(strip_quotes, filter(None, [database, schema, table])))
 
 
 def render_connection_path(

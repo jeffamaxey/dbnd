@@ -31,7 +31,7 @@ def task_with_custom_k8s_yml_gpu(
     if sleep_time_sec:
         logger.info("sleeping for %s", sleep_time_sec)
         sleep(sleep_time_sec)
-    return "Databand checked at %s" % check_time
+    return f"Databand checked at {check_time}"
 
 
 class ExampleDockerNativeTask(DockerRunTask):
@@ -39,20 +39,7 @@ class ExampleDockerNativeTask(DockerRunTask):
     image = "bash:4.4.23"
 
 
-@task(
-    task_config=dict(
-        kubernetes=dict(
-            # tolerations=[
-            #     dict(
-            #         key="special_gpu",
-            #         operator="Equal",
-            #         value="true",
-            #         effect="NoSchedule",
-            #     )
-            # ],
-        )
-    )
-)
+@task(task_config=dict(kubernetes={}))
 def dbnd_kube_check(check_time=datetime.datetime.now(), sleep_time_sec=120):
     # type: ( datetime.datetime, int)-> str
     config.log_current_config(as_table=True)
@@ -60,7 +47,7 @@ def dbnd_kube_check(check_time=datetime.datetime.now(), sleep_time_sec=120):
     if sleep_time_sec:
         logger.info("sleeping for %s", sleep_time_sec)
         sleep(sleep_time_sec)
-    return "Databand checked at %s" % check_time
+    return f"Databand checked at {check_time}"
 
 
 @pipeline

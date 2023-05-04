@@ -73,10 +73,7 @@ def extract_airflow_context(airflow_context):
         )
 
     logger.debug(
-        "airflow context from inspect, at least one of those params is missing"
-        "dag_id: {}, execution_date: {}, task_id: {}".format(
-            dag_id, execution_date, task_id
-        )
+        f"airflow context from inspect, at least one of those params is missingdag_id: {dag_id}, execution_date: {execution_date}, task_id: {task_id}"
     )
     return None
 
@@ -89,12 +86,10 @@ def try_get_airflow_context():
             try_get_airflow_context_from_spark_conf,
             try_get_airflow_context_env,
         ]:
-            context = func()
-            if context:
+            if context := func():
                 return context
-            else:
-                msg = func.__name__.replace("_", " ").replace("try", "couldn't")
-                logger.debug(msg)
+            msg = func.__name__.replace("_", " ").replace("try", "couldn't")
+            logger.debug(msg)
 
     except Exception:
         return None
@@ -119,10 +114,7 @@ def try_get_airflow_context_env():
         )
 
     logger.debug(
-        "airflow context from env, at least one of those environment var is missing"
-        "dag_id: {}, execution_date: {}, task_id: {}".format(
-            dag_id, execution_date, task_id
-        )
+        f"airflow context from env, at least one of those environment var is missingdag_id: {dag_id}, execution_date: {execution_date}, task_id: {task_id}"
     )
     return None
 
@@ -155,7 +147,7 @@ def build_run_time_airflow_task(af_context, root_task_name):
     user_params.update(
         dag_id=af_context.dag_id,
         execution_date=af_context.execution_date,
-        task_version="%s:%s" % (af_context.task_id, af_context.execution_date),
+        task_version=f"{af_context.task_id}:{af_context.execution_date}",
     )
 
     # just a placeholder name
@@ -163,10 +155,7 @@ def build_run_time_airflow_task(af_context, root_task_name):
     task_definition_uid = get_task_def_uid(
         af_context.dag_id,
         task_family,
-        "{}{}".format(
-            source_md5(source_code.task_source_code),
-            source_md5(source_code.task_module_code),
-        ),
+        f"{source_md5(source_code.task_source_code)}{source_md5(source_code.task_module_code)}",
     )
     root_task = TrackingTask.for_user_params(
         task_definition_uid=task_definition_uid,
@@ -200,10 +189,14 @@ def build_run_time_airflow_task(af_context, root_task_name):
 
 def should_flatten(operator, attr_name):
     flatten_config = get_settings().tracking.flatten_operator_fields
-    for op_name in flatten_config:
-        if is_instance_by_class_name(operator, op_name):
-            return attr_name in flatten_config[op_name]
-    return False
+    return next(
+        (
+            attr_name in flatten_config[op_name]
+            for op_name in flatten_config
+            if is_instance_by_class_name(operator, op_name)
+        ),
+        False,
+    )
 
 
 def flatten_param(attr_name, value):
@@ -217,11 +210,11 @@ def flatten_param(attr_name, value):
     """
     if isinstance(value, (dict, Mapping)):
         for name, value in value.items():
-            yield ("%s.%s" % (attr_name, name), value)
+            yield (f"{attr_name}.{name}", value)
 
     elif isinstance(value, list):
         for i, value in enumerate(value):
-            yield ("%s.%s" % (attr_name, i), value)
+            yield (f"{attr_name}.{i}", value)
 
     else:
         yield (attr_name, value)

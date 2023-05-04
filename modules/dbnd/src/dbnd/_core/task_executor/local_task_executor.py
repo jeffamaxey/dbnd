@@ -33,12 +33,11 @@ class LocalTaskExecutor(TaskExecutor):
                 self.run.get_task_run_by_id(t.task_id)
                 for t in task.ctrl.task_dag.upstream
             ]
-            failed_upstream = [
+            if failed_upstream := [
                 upstream_task_run
                 for upstream_task_run in upstream_task_runs
                 if upstream_task_run.task_run_state in TaskRunState.fail_states()
-            ]
-            if failed_upstream:
+            ]:
                 logger.info(
                     "Setting %s to %s", task.task_id, TaskRunState.UPSTREAM_FAILED
                 )
@@ -64,15 +63,13 @@ class LocalTaskExecutor(TaskExecutor):
                 raise e
             except Exception:
                 task_failed = True
-                logger.exception("Failed to execute task '%s':" % task.task_id)
+                logger.exception(f"Failed to execute task '{task.task_id}':")
 
         if task_runs_to_update_state:
             self.run.tracker.set_task_run_states(task_runs_to_update_state)
 
         if task_failed:
-            err = _collect_errors(self.run.task_runs)
-
-            if err:
+            if err := _collect_errors(self.run.task_runs):
                 raise DatabandRunError(err)
 
 

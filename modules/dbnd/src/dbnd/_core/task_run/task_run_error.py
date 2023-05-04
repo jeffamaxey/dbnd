@@ -14,10 +14,10 @@ from dbnd._core.utils.timezone import utcnow
 
 
 def task_call_source_to_str(task_call_source):
-    result = []
-    for frame_info in reversed(task_call_source):
-        result.append(frame_info_to_str(frame_info))
-
+    result = [
+        frame_info_to_str(frame_info)
+        for frame_info in reversed(task_call_source)
+    ]
     return "".join(result).rstrip()
 
 
@@ -36,7 +36,7 @@ class TaskRunError(object):
         return self.exc_info[1]
 
     @classmethod
-    def build_from_ex(self, ex, task_run, exc_info=None):
+    def build_from_ex(cls, ex, task_run, exc_info=None):
         exc_info = exc_info or sys.exc_info()
         return TaskRunError(
             exc_info=exc_info,

@@ -20,7 +20,7 @@ REDSHIFT_TABLE_MONITOR_SCHEDULE = os.getenv(
 REDSHIFT_MONITOR_TABLE_LIMIT = os.getenv("REDSHIFT_MONITOR_TABLE_LIMIT", default=1000)
 
 # query:
-SELECT_DATA = "SELECT * FROM {} LIMIT %s;".format(REDSHIFT_TABLE)
+SELECT_DATA = f"SELECT * FROM {REDSHIFT_TABLE} LIMIT %s;"
 
 DEFAULT_ARGS = {
     "owner": "databand",
@@ -41,7 +41,7 @@ def monitor_redshift_table(**op_kwarg):
     data = hook.get_pandas_df(SELECT_DATA, parameters=[REDSHIFT_MONITOR_TABLE_LIMIT])
 
     log_dataframe(
-        "{}".format(REDSHIFT_TABLE),
+        f"{REDSHIFT_TABLE}",
         data,
         with_histograms=True,
         with_stats=True,
@@ -51,23 +51,17 @@ def monitor_redshift_table(**op_kwarg):
     log_metric("record count", data.shape[0])
     log_metric("Duplicate records", data.shape[0] - data.drop_duplicates().shape[0])
     for column in data.columns:
-        log_metric(
-            "{} null record count".format(column), int(data[column].isna().sum())
-        )
+        log_metric(f"{column} null record count", int(data[column].isna().sum()))
 
         if issubdtype(data[column].dtype, number):
-            log_metric("{} mean".format(column), round(data[column].mean(), 2))
-            log_metric("{} median".format(column), data[column].median())
-            log_metric("{} min".format(column), data[column].min())
-            log_metric("{} max".format(column), data[column].max())
-            log_metric("{} std".format(column), round(data[column].std(), 2))
+            log_metric(f"{column} mean", round(data[column].mean(), 2))
+            log_metric(f"{column} median", data[column].median())
+            log_metric(f"{column} min", data[column].min())
+            log_metric(f"{column} max", data[column].max())
+            log_metric(f"{column} std", round(data[column].std(), 2))
 
 
-with DAG(
-    dag_id="dbnd_redshift_{}_monitor".format(REDSHIFT_TABLE),
-    schedule_interval="{}".format(REDSHIFT_TABLE_MONITOR_SCHEDULE),
-    default_args=DEFAULT_ARGS,
-) as dbnd_template_dag:
+with DAG(dag_id=f"dbnd_redshift_{REDSHIFT_TABLE}_monitor", schedule_interval=f"{REDSHIFT_TABLE_MONITOR_SCHEDULE}", default_args=DEFAULT_ARGS) as dbnd_template_dag:
 
     redshift_monitor = PythonOperator(
         task_id="monitor_redshift_table", python_callable=monitor_redshift_table

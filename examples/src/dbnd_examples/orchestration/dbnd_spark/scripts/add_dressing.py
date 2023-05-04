@@ -12,12 +12,12 @@ def run_spark(args):
 
     timestamp = str(datetime.datetime.now()).replace(" ", "_")
 
-    spark = SparkSession.builder.appName("Task_%s" % timestamp).getOrCreate()
+    spark = SparkSession.builder.appName(f"Task_{timestamp}").getOrCreate()
     sc = spark.sparkContext
 
     veg = sc.textFile(args[1]).collect()
 
-    mix = ["%s->%s" % (args[2], v) for v in veg]
+    mix = [f"{args[2]}->{v}" for v in veg]
     result = "".join(mix)
 
     logger.info("Dressing result %s", result)

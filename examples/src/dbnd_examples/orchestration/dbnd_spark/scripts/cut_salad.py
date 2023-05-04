@@ -14,13 +14,13 @@ def run_spark(args):
 
     timestamp = str(datetime.datetime.now()).replace(" ", "_")
 
-    spark = SparkSession.builder.appName("Task_%s" % timestamp).getOrCreate()
+    spark = SparkSession.builder.appName(f"Task_{timestamp}").getOrCreate()
     sc = spark.sparkContext
 
     chopped = []
 
     vegg = sc.textFile(args[1]).collect()
-    logger.info("Got {}. Start Chopping.".format(",".join(vegg)).replace("\n", ""))
+    logger.info(f'Got {",".join(vegg)}. Start Chopping.'.replace("\n", ""))
 
     for line in vegg:
         chopped.extend(list(line.rstrip()))
@@ -28,7 +28,7 @@ def run_spark(args):
     shuffle(chopped)
 
     result = "".join(chopped)
-    logger.info("Chopped vegetables:" + result)
+    logger.info(f"Chopped vegetables:{result}")
 
     fields = [StructField("salad", StringType(), True)]
     schema = StructType(fields)

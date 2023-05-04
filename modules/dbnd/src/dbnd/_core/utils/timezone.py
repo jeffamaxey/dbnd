@@ -120,7 +120,7 @@ def make_aware(value, timezone=None):
 
     # Check that we won't overwrite the timezone of an aware datetime.
     if is_localized(value):
-        raise ValueError("make_aware expects a naive datetime, got %s" % value)
+        raise ValueError(f"make_aware expects a naive datetime, got {value}")
 
     if hasattr(timezone, "localize"):
         # This method is available for pytz time zones.
@@ -150,12 +150,9 @@ def make_naive(value, timezone=None):
 
     o = value.astimezone(timezone)
 
-    # cross library compatibility
-    naive = dt.datetime(
+    return dt.datetime(
         o.year, o.month, o.day, o.hour, o.minute, o.second, o.microsecond
     )
-
-    return naive
 
 
 def datetime(*args, **kwargs):

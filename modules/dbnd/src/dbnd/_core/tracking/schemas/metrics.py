@@ -67,9 +67,7 @@ class Metric(_DbndDataClass):
             return self.value_float
         if self.value_int is not None:
             return int(self.value_int)
-        if self.value_json is not None:
-            return self.value_json
-        return self.value_str
+        return self.value_json if self.value_json is not None else self.value_str
 
     @property
     def serialized_value(self):
@@ -99,7 +97,7 @@ class Metric(_DbndDataClass):
                 self.value_str = value_str
 
     def __repr__(self):
-        return "Metric(key={}, source={})".format(self.key, self.source)
+        return f"Metric(key={self.key}, source={self.source})"
 
 
 @attr.s

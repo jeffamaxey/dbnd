@@ -176,9 +176,11 @@ class ParameterDefinition(object):  # generics are broken: typing.Generic[T]
 
     @property
     def task_definition_uid(self):
-        if not self.task_definition:
-            return None
-        return self.task_definition.task_definition_uid
+        return (
+            self.task_definition.task_definition_uid
+            if self.task_definition
+            else None
+        )
 
     def evolve_with_owner(self, task_definition, name):
         if self.task_definition and self.name != name:
@@ -284,7 +286,7 @@ class ParameterDefinition(object):  # generics are broken: typing.Generic[T]
 
         return value
 
-    def to_str(self, x):  # type: (T) -> str
+    def to_str(self, x):    # type: (T) -> str
         """
         Opposite of :py:meth:`parse`.
 
@@ -292,10 +294,7 @@ class ParameterDefinition(object):  # generics are broken: typing.Generic[T]
 
         :param x: the value to serialize.
         """
-        if isinstance(x, Target):
-            return str(x)
-
-        return self.value_type.to_str(x)  # default impl
+        return str(x) if isinstance(x, Target) else self.value_type.to_str(x)
 
     def to_repr(self, x):  # type: (T) -> str
         return self.value_type.to_repr(x)
@@ -304,14 +303,7 @@ class ParameterDefinition(object):  # generics are broken: typing.Generic[T]
         if x is None:
             return str(x)
 
-        if isinstance(x, Target):
-            return str(x)
-
-        # we can have
-        # 1. a value of value_type
-        # 2. target with value type TargetValueType
-        # 3. list/dict of targets with value type TargetValueType
-        return self.value_type.to_signature(x)
+        return str(x) if isinstance(x, Target) else self.value_type.to_signature(x)
 
     def load_from_target(
         self, target, **kwargs
@@ -357,11 +349,10 @@ class ParameterDefinition(object):  # generics are broken: typing.Generic[T]
             )
 
     def _store_value_origin_target(self, value, target):
-        dbnd_run = try_get_databand_run()
-        if not dbnd_run:
+        if dbnd_run := try_get_databand_run():
+            dbnd_run.target_origin.add(target, value, self.value_type)
+        else:
             return
-
-        dbnd_run.target_origin.add(target, value, self.value_type)
 
     def normalize(self, x):  # type: (T) -> T
         """
@@ -392,11 +383,10 @@ class ParameterDefinition(object):  # generics are broken: typing.Generic[T]
             return "@none"
 
         switch_value = self.to_str(value)
-        if isinstance(value, Target):
-            if self.load_on_build:
+        if isinstance(value, Target) and self.load_on_build:
                 # this is non-data parameter, it's int/str/bool
                 # we are in the scenario, when something should be loaded, however, it's still Target
-                switch_value = "@target:%s" % switch_value
+            switch_value = f"@target:{switch_value}"
         return switch_value
 
     def next_in_enumeration(self, value):
@@ -414,15 +404,12 @@ class ParameterDefinition(object):  # generics are broken: typing.Generic[T]
     def _get_help_message(self, sections=None):
         sections = sections or [(self.task_family)]
 
-        define_via = []
+        define_via = [
+            f'project.cfg : [{" | ".join(sections)}]{self.name}=VALUE',
+            f"cli:   --set {self.task_family}.{self.name}=VALUE",
+            f"constructor: {self.task_family}({self.name}=VALUE, ...)",
+        ]
 
-        define_via.append(
-            "project.cfg : [%s]%s=VALUE" % (" | ".join(sections), self.name)
-        )
-        define_via.append("cli:   --set %s.%s=VALUE" % (self.task_family, self.name))
-        define_via.append(
-            "constructor: %s(%s=VALUE, ...)" % (self.task_family, self.name)
-        )
         define_via = "\n".join(["\t* %s" % l for l in define_via])
 
         return "You can change '{task_family}.{name}' value using one of the following methods: \n {methods}".format(
@@ -440,9 +427,7 @@ class ParameterDefinition(object):  # generics are broken: typing.Generic[T]
 
     @property
     def task_family(self):
-        if self.task_definition:
-            return self.task_definition.task_family
-        return None
+        return self.task_definition.task_family if self.task_definition else None
 
     @property
     def task_config_section(self):
@@ -460,7 +445,7 @@ class ParameterDefinition(object):  # generics are broken: typing.Generic[T]
                 self.parameter_origin.task_family if self.parameter_origin else ""
             )
             if origin_cls_str and origin_cls_str != owned_by:
-                parameter_origin = " at %s" % origin_cls_str
+                parameter_origin = f" at {origin_cls_str}"
 
         parameter_kind = (
             "output" if self.kind == _ParameterKind.task_output else "parameter"
@@ -479,9 +464,9 @@ class ParameterDefinition(object):  # generics are broken: typing.Generic[T]
             return "unknown"
         type_handler = self.value_type.type_str
         if isinstance(self.value_type, InlineValueType):
-            type_handler = "!" + type_handler
+            type_handler = f"!{type_handler}"
         if self.value_type_defined != self.value_type:
-            type_handler = "*" + type_handler
+            type_handler = f"*{type_handler}"
         return type_handler
 
     def _target_source(self, task):
@@ -552,9 +537,7 @@ class ParameterDefinition(object):  # generics are broken: typing.Generic[T]
         return hash(self.name) ^ hash(self.task_definition)
 
     def modify(self, **kwargs):
-        if not kwargs:
-            return self
-        return attr.evolve(self, **kwargs)
+        return attr.evolve(self, **kwargs) if kwargs else self
 
     def get_env_key(self, section):
         return PARAM_ENV_TEMPLATE.format(S=section.upper(), K=self.name.upper())
@@ -580,29 +563,22 @@ def _update_parameter_from_runtime_value_type(parameter, value):
     if isinstance(value, Target):
         if isinstance(value, InlineTarget):
             runtime_value_type = value.value_type
-        elif isinstance(original_value_type, _TargetValueType):
-            # user expects to get target/path/str
-            # we will validate that value is good at "parse"
-            pass
-        else:
-            # we are going to "load" the value from target into original_value_type
-            # let get the "real" value type from the source of it
-            if value.source and value.source_parameter:
-                # we can take value type from the creator of it
-                runtime_value_type = value.source_parameter.value_type
-                if isinstance(
-                    runtime_value_type, (_TargetValueType, DefaultObjectValueType)
-                ):
-                    return None
-            else:
+        elif not isinstance(original_value_type, _TargetValueType):
+            if not value.source or not value.source_parameter:
                 # we don't really have value type
                 return None
-    else:
-        if isinstance(value, six.string_types) or isinstance(value, Path):
-            # str are going to be parsed, or treated as Target
-            # Path is going to be used as Target
-            return None
+            # we can take value type from the creator of it
+            runtime_value_type = value.source_parameter.value_type
+            if isinstance(
+                runtime_value_type, (_TargetValueType, DefaultObjectValueType)
+            ):
+                return None
+    elif isinstance(value, (six.string_types, Path)):
+        # str are going to be parsed, or treated as Target
+        # Path is going to be used as Target
+        return None
 
+    else:
         runtime_value_type = get_types_registry().get_value_type_of_obj(value)
 
     # not found or the same
@@ -612,13 +588,13 @@ def _update_parameter_from_runtime_value_type(parameter, value):
     # value is str, most chances we will parse it into the value
     if type(runtime_value_type) in [StrValueType, VersionValueType]:
         return None
-    if isinstance(runtime_value_type, _StructureValueType):
-        if isinstance(original_value_type, _StructureValueType):
-            if type(runtime_value_type) == type(original_value_type):
-                # probably we have difference on sub level,
-                # there is no a clear way to find sub types of object
-                if not runtime_value_type.sub_value_type:
-                    return None
+    if (
+        isinstance(runtime_value_type, _StructureValueType)
+        and isinstance(original_value_type, _StructureValueType)
+        and type(runtime_value_type) == type(original_value_type)
+        and not runtime_value_type.sub_value_type
+    ):
+        return None
     if original_value_type.type is object:
         if runtime_value_type.type is object:
             return None
@@ -655,20 +631,20 @@ def build_parameter_value(parameter, cf_value):
                         value_type=updated_value_type,
                         load_on_build=updated_value_type.load_on_build,
                     )
-                    message = "%s: updating parameter with the runtime info" % (message)
+                    message = f"{message}: updating parameter with the runtime info"
                 # warn anyway
                 warnings.append(message)
 
     except Exception:
         # we don't want to fail user code on failed value discovery
         # we only print message from "friendly exception" and show real stack
-        logger.exception("Failed to discover runtime for %s" % parameter)
+        logger.exception(f"Failed to discover runtime for {parameter}")
 
     try:
         p_val = parameter.calc_init_value(value)
     except Exception as ex:
         raise parameter.parameter_exception(
-            "calculate value from '%s'" % safe_string(value, 100), ex=ex
+            f"calculate value from '{safe_string(value, 100)}'", ex=ex
         )
 
     # we need to break strong reference between tasks
@@ -682,10 +658,10 @@ def build_parameter_value(parameter, cf_value):
             parameter.validate(p_val)
     except Exception as ex:
         raise parameter.parameter_exception(
-            "validate value='%s'" % safe_string(p_val), ex=ex
+            f"validate value='{safe_string(p_val)}'", ex=ex
         )
 
-    p_value = _ParameterValue(
+    return _ParameterValue(
         parameter=parameter,
         source=cf_value.source,
         source_value=cf_value.value,
@@ -693,8 +669,6 @@ def build_parameter_value(parameter, cf_value):
         parsed=cf_value.require_parse,
         warnings=warnings + cf_value.warnings,
     )
-
-    return p_value
 
 
 def infer_parameter_value_type(parameter, value):

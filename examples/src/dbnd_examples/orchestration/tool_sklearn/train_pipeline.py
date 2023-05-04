@@ -32,7 +32,7 @@ def data_source(task_target_date, name):
 @task
 def get_and_enrich(raw_data: pd.DataFrame, column_name: str) -> pd.DataFrame:
     scaler = preprocessing.MinMaxScaler()
-    raw_data[column_name + "_norm"] = scaler.fit_transform(
+    raw_data[f"{column_name}_norm"] = scaler.fit_transform(
         raw_data[[column_name]].values.astype(float)
     )
     return raw_data
@@ -53,16 +53,14 @@ def ingest_partner_a(task_target_date):
 @pipeline
 def ingest_partner_b(task_target_date):
     raw_data = data_source(name="b", task_target_date=task_target_date)
-    data = clean_data(raw_data=raw_data)
-    return data
+    return clean_data(raw_data=raw_data)
 
 
 @pipeline
 def ingest_partner_c(task_target_date):
     raw_data = data_source(name="c", task_target_date=task_target_date)
     clean = clean_data(raw_data=raw_data)
-    data = get_and_enrich(raw_data=clean, column_name="10")
-    return data
+    return get_and_enrich(raw_data=clean, column_name="10")
 
 
 @pipeline
@@ -103,7 +101,7 @@ def calculate_features(
 def split_data(
     raw_data: pd.DataFrame,
 ) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
-    columns_to_remove = set(["id", "0_norm", "10_norm"])
+    columns_to_remove = {"id", "0_norm", "10_norm"}
     if columns_to_remove.issubset(raw_data.columns):
         raw_data.drop(columns_to_remove, axis=1, inplace=True)
 
@@ -176,11 +174,10 @@ def validate_model_for_customer(
     fig = _create_scatter_plot(validation_y, prediction)
     if r2 < threshold:
         raise Exception(
-            "Model quality is below threshold. Got R2 equal to %s, expect at least %s"
-            % (r2, threshold)
+            f"Model quality is below threshold. Got R2 equal to {r2}, expect at least {threshold}"
         )
 
-    return "%s,%s,%s" % (rmse, mae, r2), fig
+    return f"{rmse},{mae},{r2}", fig
 
 
 @pipeline(result=("model", "validation"))

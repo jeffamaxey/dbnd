@@ -19,16 +19,11 @@ class TaskContext(SingletonContext):
         self.phase = phase
 
     def __repr__(self):
-        return "TaskContext( [...%s], %s)" % (self.stack[-1], self.phase)
+        return f"TaskContext( [...{self.stack[-1]}], {self.phase})"
 
 
 def task_context(task, phase):
-    # type: (dbnd.tasks.Task, TaskContextPhase) -> TaskContext
-    base_stack = []
-
-    if has_current_task():
-        base_stack = current_task_stack()
-
+    base_stack = current_task_stack() if has_current_task() else []
     return TaskContext.new_context(
         stack=base_stack + [task], phase=phase, allow_override=True
     )
@@ -46,9 +41,7 @@ def current_task():
 def try_get_current_task():
     # type: () -> Optional[dbnd.tasks.Task]
     tc = TaskContext.try_get_instance()
-    if tc and tc.stack:
-        return tc.stack[-1]
-    return None
+    return tc.stack[-1] if tc and tc.stack else None
 
 
 def current():

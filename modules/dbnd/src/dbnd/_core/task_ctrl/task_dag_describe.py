@@ -43,7 +43,7 @@ class DescribeDagCtrl(TaskSubCtrl):
         def get_downstream(task, level=0):
             task_desc = self._describe_task(task, describe_format=describe_format)
             if task in seen:
-                return [(level, "%s (*)" % task_desc)]
+                return [(level, f"{task_desc} (*)")]
             result = [(level, task_desc)]
 
             seen.add(task)
@@ -56,7 +56,7 @@ class DescribeDagCtrl(TaskSubCtrl):
                     continue
 
                 if count > 30:
-                    result.append((level, "..(%s tasks).." % len(task_dag.upstream)))
+                    result.append((level, f"..({len(task_dag.upstream)} tasks).."))
                     break
                 result.extend(get_downstream(t, level))
 
@@ -91,31 +91,27 @@ class DescribeDagCtrl(TaskSubCtrl):
 
     def _describe_task(self, task, describe_format=None, msg=None, color=None):
         describe_format = describe_format or self.describe_format
-        describe_config = self.config  # type: DescribeConfig
-        msg = msg or ""
-
         if color is None:
-            color = "white"
-            if not describe_config.no_checks:
+            describe_config = self.config  # type: DescribeConfig
+            if describe_config.no_checks:
+                color = "white"
+            else:
                 color = "green" if self._get_task_complete(task) else "cyan"
-
         if describe_format == DescribeFormat.short:
             return colored(str(task.task_id), color)
 
-        if (
-            describe_format == DescribeFormat.long
-            or describe_format == DescribeFormat.verbose
-        ):
-            title = "%s - %s" % (task.task_name, task.task_id)
+        msg = msg or ""
+        if describe_format in [DescribeFormat.long, DescribeFormat.verbose]:
+            title = f"{task.task_name} - {task.task_id}"
             if task.task_name != task.get_task_family():
-                title += "(%s)" % task.get_task_family()
+                title += f"({task.get_task_family()})"
             if msg:
-                title += ": %s" % msg
+                title += f": {msg}"
             return task.ctrl.visualiser.banner(
                 title, color=color, verbose=describe_format == DescribeFormat.verbose
             )
 
-        raise DatabandSystemError("Not supported format mode %s" % self.describe_format)
+        raise DatabandSystemError(f"Not supported format mode {self.describe_format}")
 
     def describe_dag(self):
         # print short tree

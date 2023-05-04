@@ -74,13 +74,13 @@ def adjust_log_lines_to_size(log_lines, size, reverse=False):
     # https://stackoverflow.com/a/14541029/6517749
     result = []
     current_size = 0
-    for line in log_lines if not reverse else reversed(log_lines):
+    for line in reversed(log_lines) if reverse else log_lines:
         current_size += len(line)
         if current_size <= size:
             result.append(line)
         else:
             break
-    return result if not reverse else reversed(result)
+    return reversed(result) if reverse else result
 
 
 def read_head_and_tail(path, head_size, tail_size):
@@ -97,29 +97,29 @@ def read_head_and_tail(path, head_size, tail_size):
     Returns:
         A tuple with one (whole file) or two (head and tail) list of lines.
     """
-    if not (_is_non_negative_int(head_size) and _is_non_negative_int(tail_size)):
+    if not _is_non_negative_int(head_size) or not _is_non_negative_int(
+        tail_size
+    ):
         raise ValueError("tail and head max size has to be non negative integers")
 
     file_size = os.path.getsize(path)
     with io.open(path, "rb") as f:
-        if head_size + tail_size < file_size:
-            # readlines(0) returns all the lines but in our case we need no lines
-            head_content = f.readlines(head_size) if head_size else []
-            head_content = adjust_log_lines_to_size(head_content, head_size)
-
-            if f.seekable():
-                f.seek(-tail_size, io.SEEK_END)
-            # removing the first line cause it may not be a complete line
-            tail_content = f.readlines(tail_size)[1:]
-            # reverse tail_content to remove an element from a beginning of log + reverse back
-            tail_content = adjust_log_lines_to_size(
-                tail_content, tail_size, reverse=True
-            )
-
-            return _decode_lines(head_content), _decode_lines(tail_content)
-
-        else:
+        if head_size + tail_size >= file_size:
             return (_decode_lines(f.readlines()),)
+        # readlines(0) returns all the lines but in our case we need no lines
+        head_content = f.readlines(head_size) if head_size else []
+        head_content = adjust_log_lines_to_size(head_content, head_size)
+
+        if f.seekable():
+            f.seek(-tail_size, io.SEEK_END)
+        # removing the first line cause it may not be a complete line
+        tail_content = f.readlines(tail_size)[1:]
+        # reverse tail_content to remove an element from a beginning of log + reverse back
+        tail_content = adjust_log_lines_to_size(
+            tail_content, tail_size, reverse=True
+        )
+
+        return _decode_lines(head_content), _decode_lines(tail_content)
 
 
 def merge_read_log_files(dbnd_log_path, spark_log_path, head_size, tail_size):
@@ -134,7 +134,8 @@ def merge_read_log_files(dbnd_log_path, spark_log_path, head_size, tail_size):
         spark_log = read_head_and_tail(spark_log_path, head_size, tail_size)
     except Exception:
         logger.warning(
-            "Failed to read dbnd spark log file {}".format(dbnd_log_path), exc_info=True
+            f"Failed to read dbnd spark log file {dbnd_log_path}",
+            exc_info=True,
         )
         # if spark log read fails we want to return dbnd_log at least
         return dbnd_log

@@ -27,12 +27,8 @@ def f_df_dict(df_dict):
 
 @pipeline
 def f_pipe_df_dict():
-    df_dict = {}
-    for i in range(5):
-        df_dict[str(i)] = f_pandas_df(i)
-    df_sum = f_df_dict(df_dict)
-
-    return df_sum
+    df_dict = {str(i): f_pandas_df(i) for i in range(5)}
+    return f_df_dict(df_dict)
 
 
 @task
@@ -41,7 +37,7 @@ def f_pandas_numpy(v_df: pd.DataFrame, v_series: pd.Series, v_np: numpy.ndarray)
     assert isinstance(v_series, pd.Series)
     assert isinstance(v_np, numpy.ndarray)
 
-    return "df:%s series:%s np:%s" % (v_df.shape, v_series.shape, v_np.shape)
+    return f"df:{v_df.shape} series:{v_series.shape} np:{v_np.shape}"
 
 
 @task(result=("df", "series", "np"))

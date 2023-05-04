@@ -21,9 +21,9 @@ select_query = f"select * from {database}.{schema}.{table} limit 1000"
 
 dag_examples = [
     DAG(
-        dag_id="snowflake_example_dag_{}".format(i),
+        dag_id=f"snowflake_example_dag_{i}",
         default_args=args,
-        schedule_interval="0 1 * * *",  # Daily
+        schedule_interval="0 1 * * *",
     )
     for i in range(1, 4)
 ]

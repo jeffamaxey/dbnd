@@ -43,8 +43,7 @@ class GitConfig(config.Config):
                 logger.warning("Runing with not commited files.")
             else:
                 self._raise_enforce_clean_error("Git repo must be clean.")
-        else:  # is_dirty is None
-            if self.allow_dirty:
-                logger.warning("Failed to get git status.")
-            else:
-                self._raise_enforce_clean_error("Failed to get git status.")
+        elif self.allow_dirty:
+            logger.warning("Failed to get git status.")
+        else:
+            self._raise_enforce_clean_error("Failed to get git status.")

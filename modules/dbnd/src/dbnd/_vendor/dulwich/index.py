@@ -167,7 +167,7 @@ def read_index(f):
         raise AssertionError("Invalid index file header: %r" % header)
     (version, num_entries) = struct.unpack(b">LL", f.read(4 * 2))
     assert version in (1, 2)
-    for i in range(num_entries):
+    for _ in range(num_entries):
         yield read_cache_entry(f)
 
 
@@ -176,10 +176,7 @@ def read_index_dict(f):
 
     :param f: File object to read from
     """
-    ret = {}
-    for x in read_index(f):
-        ret[x[0]] = IndexEntry(*x[1:])
-    return ret
+    return {x[0]: IndexEntry(*x[1:]) for x in read_index(f)}
 
 
 def write_index(f, entries):
@@ -198,9 +195,7 @@ def write_index_dict(f, entries):
     """Write an index file based on the contents of a dictionary.
 
     """
-    entries_list = []
-    for name in sorted(entries):
-        entries_list.append((name,) + tuple(entries[name]))
+    entries_list = [(name,) + tuple(entries[name]) for name in sorted(entries)]
     write_index(f, entries_list)
 
 
@@ -339,14 +334,13 @@ class Index(object):
             entry = self[path]
             return entry.sha, entry.mode
 
-        for (name, mode, sha) in changes_from_tree(
+        yield from changes_from_tree(
             self._byname.keys(),
             lookup_entry,
             object_store,
             tree,
             want_unchanged=want_unchanged,
-        ):
-            yield (name, mode, sha)
+        )
 
     def commit(self, object_store):
         """Create a new tree from an index.
@@ -524,11 +518,7 @@ def validate_path_element_default(element):
 
 def validate_path_element_ntfs(element):
     stripped = element.rstrip(b". ").lower()
-    if stripped in INVALID_DOTNAMES:
-        return False
-    if stripped == b"git~1":
-        return False
-    return True
+    return False if stripped in INVALID_DOTNAMES else stripped != b"git~1"
 
 
 def validate_path(path, element_validator=validate_path_element_default):
@@ -622,15 +612,14 @@ def blob_from_path_and_stat(fs_path, st):
     if not stat.S_ISLNK(st.st_mode):
         with open(fs_path, "rb") as f:
             blob.data = f.read()
+    elif sys.platform == "win32" and sys.version_info[0] == 3:
+        # os.readlink on Python3 on Windows requires a unicode string.
+        # TODO(jelmer): Don't assume tree_encoding == fs_encoding
+        tree_encoding = sys.getfilesystemencoding()
+        fs_path = fs_path.decode(tree_encoding)
+        blob.data = os.readlink(fs_path).encode(tree_encoding)
     else:
-        if sys.platform == "win32" and sys.version_info[0] == 3:
-            # os.readlink on Python3 on Windows requires a unicode string.
-            # TODO(jelmer): Don't assume tree_encoding == fs_encoding
-            tree_encoding = sys.getfilesystemencoding()
-            fs_path = fs_path.decode(tree_encoding)
-            blob.data = os.readlink(fs_path).encode(tree_encoding)
-        else:
-            blob.data = os.readlink(fs_path)
+        blob.data = os.readlink(fs_path)
     return blob
 
 
@@ -724,15 +713,14 @@ def _fs_to_tree_path(fs_path, fs_encoding=None):
     """
     if fs_encoding is None:
         fs_encoding = sys.getfilesystemencoding()
-    if not isinstance(fs_path, bytes):
-        fs_path_bytes = fs_path.encode(fs_encoding)
-    else:
-        fs_path_bytes = fs_path
-    if os_sep_bytes != b"/":
-        tree_path = fs_path_bytes.replace(os_sep_bytes, b"/")
-    else:
-        tree_path = fs_path_bytes
-    return tree_path
+    fs_path_bytes = (
+        fs_path if isinstance(fs_path, bytes) else fs_path.encode(fs_encoding)
+    )
+    return (
+        fs_path_bytes.replace(os_sep_bytes, b"/")
+        if os_sep_bytes != b"/"
+        else fs_path_bytes
+    )
 
 
 def index_entry_from_path(path, object_store=None):
@@ -752,16 +740,14 @@ def index_entry_from_path(path, object_store=None):
         st = os.lstat(path)
         blob = blob_from_path_and_stat(path, st)
     except EnvironmentError as e:
-        if e.errno == errno.EISDIR:
-            if os.path.exists(os.path.join(path, b".git")):
-                head = read_submodule_head(path)
-                if head is None:
-                    return None
-                return index_entry_from_stat(st, head, 0, mode=S_IFGITLINK)
-            else:
-                raise
-        else:
+        if e.errno != errno.EISDIR:
             raise
+        if not os.path.exists(os.path.join(path, b".git")):
+            raise
+        head = read_submodule_head(path)
+        if head is None:
+            return None
+        return index_entry_from_stat(st, head, 0, mode=S_IFGITLINK)
     else:
         if object_store is not None:
             object_store.add_object(blob)

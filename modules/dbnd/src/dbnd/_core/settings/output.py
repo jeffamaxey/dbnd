@@ -34,9 +34,8 @@ class OutputConfig(Config):
 
         type_handler = get_value_type_of_type(value_type)
         for possible_option in [str(type_handler), type_handler.config_name]:
-            config_value = config.get_config_value(
+            if config_value := config.get_config_value(
                 section=self._conf__task_family, key=possible_option
-            )
-            if config_value:
+            ):
                 return parse_target_config(config_value.value)
         return file.pickle

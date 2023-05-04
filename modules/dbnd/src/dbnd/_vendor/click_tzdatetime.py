@@ -27,8 +27,7 @@ class TZAwareDateTime(click.DateTime):
     name = 'tzawaredatetime'
 
     def _try_to_convert_date(self, value, format):
-        dt = super(TZAwareDateTime, self)._try_to_convert_date(value, format)
-        if dt:
+        if dt := super(TZAwareDateTime, self)._try_to_convert_date(value, format):
             return make_aware(dt, get_localzone())
 
     def __repr__(self):

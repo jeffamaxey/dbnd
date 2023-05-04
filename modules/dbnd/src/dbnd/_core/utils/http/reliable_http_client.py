@@ -34,7 +34,7 @@ class ReliableHttpClient(object):
         elif self._endpoint.auth == constants.AUTH_BASIC:
             self._auth = (self._endpoint.username, self._endpoint.password)
         elif self._endpoint.auth != constants.NO_AUTH:
-            raise DatabandConfigError("Unsupported auth %s" % self._endpoint.auth)
+            raise DatabandConfigError(f"Unsupported auth {self._endpoint.auth}")
 
         self.logger = logger
 
@@ -49,7 +49,7 @@ class ReliableHttpClient(object):
         return self._headers
 
     def compose_url(self, relative_url):
-        r_u = "/{}".format(relative_url.rstrip("/").lstrip("/"))
+        r_u = f'/{relative_url.rstrip("/").lstrip("/")}'
         return self._endpoint.url + r_u
 
     def get(self, relative_url, accepted_status_codes, retry_policy=None):
@@ -99,38 +99,40 @@ class ReliableHttpClient(object):
         while True:
             try:
                 if self._endpoint.auth == constants.NO_AUTH:
-                    if data is None:
-                        r = function(url, headers=self._headers, verify=self.verify_ssl)
-                    else:
-                        r = function(
+                    r = (
+                        function(
+                            url, headers=self._headers, verify=self.verify_ssl
+                        )
+                        if data is None
+                        else function(
                             url,
                             headers=self._headers,
                             data=json.dumps(data),
                             verify=self.verify_ssl,
                         )
+                    )
+                elif data is None:
+                    r = function(
+                        url,
+                        headers=self._headers,
+                        auth=self._auth,
+                        verify=self.verify_ssl,
+                    )
                 else:
-                    if data is None:
-                        r = function(
-                            url,
-                            headers=self._headers,
-                            auth=self._auth,
-                            verify=self.verify_ssl,
-                        )
-                    else:
-                        r = function(
-                            url,
-                            headers=self._headers,
-                            auth=self._auth,
-                            data=json.dumps(data),
-                            verify=self.verify_ssl,
-                        )
+                    r = function(
+                        url,
+                        headers=self._headers,
+                        auth=self._auth,
+                        data=json.dumps(data),
+                        verify=self.verify_ssl,
+                    )
             except requests.exceptions.RequestException as e:
                 error = True
                 r = None
                 status = None
                 text = None
 
-                self.logger.warning("Request to '{}' failed with '{}'".format(url, e))
+                self.logger.warning(f"Request to '{url}' failed with '{e}'")
             else:
                 error = False
                 status = r.status_code
@@ -141,9 +143,7 @@ class ReliableHttpClient(object):
                 if retry_policy.should_retry(status, error, retry_count):
                     delay_before_retry = retry_policy.seconds_to_sleep(retry_count)
                     self.logger.warning(
-                        "Retrying request to '{}' in {} seconds; Status code: '{}' - {}; [#{}]".format(
-                            url, delay_before_retry, status, text, retry_count
-                        )
+                        f"Retrying request to '{url}' in {delay_before_retry} seconds; Status code: '{status}' - {text}; [#{retry_count}]"
                     )
                     sleep(delay_before_retry)
                     retry_count += 1
@@ -155,8 +155,6 @@ class ReliableHttpClient(object):
                     )
                 else:
                     raise HttpClientException(
-                        "Invalid status code '{}' from {} with error payload: {}".format(
-                            status, url, text
-                        )
+                        f"Invalid status code '{status}' from {url} with error payload: {text}"
                     )
             return r

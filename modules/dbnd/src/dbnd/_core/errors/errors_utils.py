@@ -25,16 +25,11 @@ _inner_call_functions_regexp = re.compile(
 
 
 def safe_value(value):
-    if value is None:
-        return value
-
-    return safe_string(str(value), 500)
+    return value if value is None else safe_string(str(value), 500)
 
 
 def get_help_msg(cur_ex):
-    if getattr(cur_ex, "help_msg", None):
-        return cur_ex.help_msg
-    return ""
+    return cur_ex.help_msg if getattr(cur_ex, "help_msg", None) else ""
 
 
 def get_user_frame_info_str(cur_ex):
@@ -69,13 +64,11 @@ def _nested_exceptions_messages(ex, limit=None, current=""):
         message = "{ex_id}. {ex_type}: {msg} ".format(
             ex_id=ex_id, ex_type=type(cur_ex).__name__, msg=str(cur_ex)
         )
-        help_msg = get_help_msg(cur_ex)
-        if help_msg:
+        if help_msg := get_help_msg(cur_ex):
             message += "\n{help_msg}".format(
                 help_msg=indent(help_msg, " " * len(ex_id))
             )
-        user_frame_info_str = get_user_frame_info_str(cur_ex)
-        if user_frame_info_str:
+        if user_frame_info_str := get_user_frame_info_str(cur_ex):
             message += "\n{user_frame_info}".format(
                 user_frame_info=indent(user_frame_info_str, " " * len(ex_id))
             )
@@ -84,7 +77,7 @@ def _nested_exceptions_messages(ex, limit=None, current=""):
         if limit is None or limit:
             messages.extend(
                 _nested_exceptions_messages(
-                    cur_ex, limit=limit, current="(%s)-> " % ex_id
+                    cur_ex, limit=limit, current=f"({ex_id})-> "
                 )
             )
     return messages
@@ -99,17 +92,14 @@ def nested_exceptions_str(ex, limit=None):
 def frame_info_to_str(frame_info):
     if not frame_info:
         return ""
-    result = []
     if frame_info.function == "build_dbnd_task":
         return ""
-    result.append(
-        '  File "{}", line {}, in {}\n'.format(
-            frame_info.filename, frame_info.lineno, frame_info.function
-        )
-    )
+    result = [
+        f'  File "{frame_info.filename}", line {frame_info.lineno}, in {frame_info.function}\n'
+    ]
     if frame_info.code_context:
         line = "\n".join(l.rstrip() for l in frame_info.code_context)
-        result.append("    {}\n".format(line))
+        result.append(f"    {line}\n")
     return "".join(result)
 
 
@@ -151,10 +141,7 @@ class UserCodeDetector(object):
         if file.startswith(self._code_dir):
             return True
 
-        if sys.platform != "win32" and not file.startswith("/"):
-            return True
-
-        return False
+        return sys.platform != "win32" and not file.startswith("/")
 
     def _is_user_frame(self, frame_info, user_side_only=True):
         if not frame_info.filename:
@@ -163,10 +150,7 @@ class UserCodeDetector(object):
         if _inner_call_functions_regexp.search(frame_info.filename.replace("\\", "/")):
             return False
 
-        if not user_side_only:
-            return True
-
-        return self.is_user_file(frame_info.filename)
+        return self.is_user_file(frame_info.filename) if user_side_only else True
 
     def find_user_side_frame(self, depth=1, context=1, user_side_only=False):
         from inspect import getframeinfo
@@ -205,12 +189,12 @@ def log_exception(msg, ex, logger_=None, verbose=None, non_critical=False):
         return
 
     if non_critical:
-        logger_.debug(msg + ": %s" % str(ex))
+        logger_.debug(f"{msg}: {str(ex)}")
         return
 
     if isinstance(ex, DatabandError):
         # msg = "{msg}:{ex}".format(msg=msg, ex=ex)
-        logger_.error(msg + ": %s" % str(ex))
+        logger_.error(f"{msg}: {str(ex)}")
     else:
         # should we? let's show the exception for now so we can debug
         logger_.exception(msg)

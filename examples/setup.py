@@ -10,11 +10,10 @@ config = read_configuration(CFG_PATH)
 
 version = config["metadata"]["version"]
 
-EXTRAS_REQUIRE = {"airflow": ["dbnd-airflow[airflow]==" + version]}
+EXTRAS_REQUIRE = {"airflow": [f"dbnd-airflow[airflow]=={version}"]}
 
 INSTALL_REQUIRES = [
-    # we are still installing 'databand' in dockers.. "dbnd==" + version,
-    "dbnd-airflow==" + version,
+    f"dbnd-airflow=={version}",
     "scikit-learn==0.23.2",
     'scipy==1.1.0;python_version<"3.8"',
     'scipy==1.8.0;python_version>="3.8"',

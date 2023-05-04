@@ -60,8 +60,7 @@ class DatabandSettings(object):
 
         if name_or_env not in self.core.environments:
             raise DatabandConfigError(
-                "Unknown env name '%s', available environments are %s,  please enable it at '[core]environments' "
-                % (name_or_env, self.core.environments)
+                f"Unknown env name '{name_or_env}', available environments are {self.core.environments},  please enable it at '[core]environments' "
             )
         return build_task_from_config(name_or_env, EnvConfig)
 
@@ -87,4 +86,4 @@ class DatabandSettings(object):
                 self.singleton_configs[name] = conf
                 return conf
 
-        raise ConfigLookupError("Couldn't found config - {}".format(name))
+        raise ConfigLookupError(f"Couldn't found config - {name}")

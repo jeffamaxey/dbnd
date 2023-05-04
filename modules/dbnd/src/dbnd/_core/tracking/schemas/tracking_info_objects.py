@@ -36,7 +36,7 @@ class TaskDefinitionInfo(_DbndDataClass):
     source_hash = attr.ib(default=None)  # type: str
 
     def __repr__(self):
-        return "TaskDefinitionInfo(%s)" % self.name
+        return f"TaskDefinitionInfo({self.name})"
 
 
 @attr.s

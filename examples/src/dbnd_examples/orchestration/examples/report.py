@@ -29,19 +29,17 @@ def dump_table_from_db(table, db_name="master"):
 
 @band
 def dump_db(tables, db_name="master"):
-    # type: (List[str], str) -> Dict[str, pd.DataFrame]
-    result = {
-        t: dump_table_from_db(table=t, db_name=db_name, task_name="table_%s" % t)
+    return {
+        t: dump_table_from_db(table=t, db_name=db_name, task_name=f"table_{t}")
         for t in tables
     }
-    return result
 
 
 @task
 def filter_partner(data, partner):
     # type: (DataFrame, int) -> DataFrame
     partner_data = data[data["partner"] == partner]
-    log_dataframe("partner_%s" % partner, partner_data)
+    log_dataframe(f"partner_{partner}", partner_data)
     return partner_data
 
 

@@ -13,7 +13,7 @@ from dbnd.api.proto.generated.tracking_pb2 import (
 
 
 def str_type(obj):
-    return "%s.%s" % (obj.__class__.__module__, obj.__class__.__name__)
+    return f"{obj.__class__.__module__}.{obj.__class__.__name__}"
 
 
 class TrackingProtoWebChannel(ProtobufMixin, TrackingChannel):
@@ -56,7 +56,7 @@ class TrackingProtoWebChannel(ProtobufMixin, TrackingChannel):
         post_event_response.ParseFromString(raw_bytes)
 
         if post_event_response.exception:
-            raise Exception("Response error: %s" % post_event_response.exception)
+            raise Exception(f"Response error: {post_event_response.exception}")
 
         return post_event_response.responses[event.uuid]
 

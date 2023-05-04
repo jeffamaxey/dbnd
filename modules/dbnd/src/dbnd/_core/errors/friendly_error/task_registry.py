@@ -16,9 +16,9 @@ def wrong_type_for_task(section, task_cls, expected_type):
 
 
 def task_not_exist(task_name, alternative_tasks=None, module=None):
-    err_msg = "Could not find the requested task/function '%s'" % task_name
+    err_msg = f"Could not find the requested task/function '{task_name}'"
     if module:
-        err_msg += " in the current module %s." % module
+        err_msg += f" in the current module {module}."
     if alternative_tasks:
         err_msg += "\nDid you mean to call one of the following:\n %s" % "\n ".join(
             alternative_tasks

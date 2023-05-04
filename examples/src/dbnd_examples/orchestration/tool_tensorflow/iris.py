@@ -15,12 +15,7 @@ def train_input_fn(features, labels, batch_size):
 
 def eval_input_fn(features, labels, batch_size):
     features = dict(features)
-    if labels is None:
-        # No labels, use only features.
-        inputs = features
-    else:
-        inputs = (features, labels)
-
+    inputs = features if labels is None else (features, labels)
     # Convert the inputs to a Dataset.
     dataset = tf.data.Dataset.from_tensor_slices(inputs)
 
@@ -30,12 +25,10 @@ def eval_input_fn(features, labels, batch_size):
 
 
 def build_classifier(train, model_dir):
-    my_feature_columns = []
-    for key in train.keys():
-        my_feature_columns.append(tf.feature_column.numeric_column(key=key))
-
-    # Build 2 hidden layer DNN with 10, 10 units respectively.
-    classifier = tf.estimator.DNNClassifier(
+    my_feature_columns = [
+        tf.feature_column.numeric_column(key=key) for key in train.keys()
+    ]
+    return tf.estimator.DNNClassifier(
         feature_columns=my_feature_columns,
         hidden_units=[10, 10],
         n_classes=3,
@@ -45,7 +38,6 @@ def build_classifier(train, model_dir):
         model_dir=model_dir,
         config=tf.estimator.RunConfig().replace(save_summary_steps=10),
     )
-    return classifier
 
 
 def create_receiver_fn():
@@ -63,8 +55,7 @@ def create_receiver_fn():
             "float", name="PetalWidth", shape=[None]
         ),
     }
-    receiver_fn = tf.estimator.export.build_raw_serving_input_receiver_fn(feature_spec)
-    return receiver_fn
+    return tf.estimator.export.build_raw_serving_input_receiver_fn(feature_spec)
 
 
 def predict(data, model_path):

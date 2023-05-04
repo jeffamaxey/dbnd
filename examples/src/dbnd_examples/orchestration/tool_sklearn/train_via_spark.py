@@ -30,8 +30,7 @@ def data_source(task_target_date, name):
 @spark_task(result=parameter.output.csv[spark.DataFrame])
 def get_and_enrich_spark(raw_data: spark.DataFrame, column_name: str):
     raw_data.show()
-    data_with_new_feature = raw_data.withColumn(column_name + "_exp", exp(column_name))
-    return data_with_new_feature
+    return raw_data.withColumn(f"{column_name}_exp", exp(column_name))
 
 
 @spark_task(result=parameter.output.csv[spark.DataFrame])
@@ -99,7 +98,7 @@ def split_data_spark(
     raw_data: spark.DataFrame,
 ) -> Tuple[spark.DataFrame, spark.DataFrame, spark.DataFrame]:
 
-    columns_to_remove = set(["id", "0_norm", "10_norm"])
+    columns_to_remove = {"id", "0_norm", "10_norm"}
     if columns_to_remove.issubset(list(raw_data.schema.names)):
         raw_data = raw_data.drop(columns_to_remove)
 

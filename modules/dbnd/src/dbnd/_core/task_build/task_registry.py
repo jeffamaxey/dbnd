@@ -133,13 +133,10 @@ class DbndTaskRegistry(SingletonContext):
     def _get_task_cls(self, task_name):
         from dbnd._core.utils.basics.load_python_module import load_python_module
 
-        task_cls = self._get_registered_task_cls(task_name)
-        if task_cls:
+        if task_cls := self._get_registered_task_cls(task_name):
             return task_cls
 
-        # we are going to check if we have override/definition in config
-        config_task_type = config.get(task_name, "_type", None)
-        if config_task_type:
+        if config_task_type := config.get(task_name, "_type", None):
             _validate_no_recursion_in_config(task_name, config_task_type, "_type")
             try:
                 return self._get_task_cls(config_task_type)
@@ -150,8 +147,7 @@ class DbndTaskRegistry(SingletonContext):
                     config_task_type,
                 )
                 raise
-        config_task_type = config.get(task_name, "_from", None)
-        if config_task_type:
+        if config_task_type := config.get(task_name, "_from", None):
             _validate_no_recursion_in_config(task_name, config_task_type, "_from")
             return self._get_task_cls(config_task_type)
 
@@ -161,10 +157,9 @@ class DbndTaskRegistry(SingletonContext):
             possible_module = ".".join(parts)
 
             # Try to load module and check again for existance
-            load_python_module(possible_module, "task name '%s'" % task_name)
+            load_python_module(possible_module, f"task name '{task_name}'")
 
-            task_cls = self._get_registered_task_cls(task_name)
-            if task_cls:
+            if task_cls := self._get_registered_task_cls(task_name):
                 return task_cls
 
             # Check if task exists but user forgot to decorate method with @task
@@ -202,8 +197,7 @@ class DbndTaskRegistry(SingletonContext):
                 AirflowDagAsDbndTask,
             )
 
-            dag = self._get_aiflow_dag(task_name)
-            if dag:
+            if dag := self._get_aiflow_dag(task_name):
                 return AirflowDagAsDbndTask
         return None
 
@@ -236,13 +230,13 @@ class DbndTaskRegistry(SingletonContext):
 
             task_classes.append(task_cls)
 
-        task_classes = sorted(
-            task_classes, key=lambda task_cls: task_cls.task_definition.full_task_family
+        return sorted(
+            task_classes,
+            key=lambda task_cls: task_cls.task_definition.full_task_family,
         )
-        return task_classes
 
     def build_dbnd_task(self, task_name, task_kwargs=None, expected_type=None):
-        task_kwargs = task_kwargs or dict()
+        task_kwargs = task_kwargs or {}
         task_kwargs.setdefault("task_name", task_name)
 
         task_cls = self.get_task_cls(task_name)  # type: Type[Task]
@@ -254,9 +248,7 @@ class DbndTaskRegistry(SingletonContext):
             if issubclass(task_cls, AirflowDagAsDbndTask):
                 # we are running old style dag
                 dag = self._get_aiflow_dag(task_name)
-                airflow_task = AirflowDagAsDbndTask.build_dbnd_task_from_dag(dag=dag)
-                return airflow_task
-
+                return AirflowDagAsDbndTask.build_dbnd_task_from_dag(dag=dag)
         try:
             logger.debug("Building %s task", task_cls.task_definition.full_task_family)
             obj = task_cls(**task_kwargs)
@@ -280,17 +272,13 @@ class DbndTaskRegistry(SingletonContext):
             from airflow.models import DagBag
 
             self._dag_bag = DagBag()
-        if dag_id in self._dag_bag.dags:
-            return self._dag_bag.dags[dag_id]
-        return None
+        return self._dag_bag.dags[dag_id] if dag_id in self._dag_bag.dags else None
 
     ########
     ## NAMESPACE MANAGEMENT
     def get_namespace(self, module_name):
         for parent in module_parents(module_name):
-            #  if module is a.b.c ->  a.b can have namespace defined
-            entry = self._namespace_map.get(parent)
-            if entry:
+            if entry := self._namespace_map.get(parent):
                 return entry
         # by default we don't have namespace
         return ""

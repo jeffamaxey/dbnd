@@ -3,6 +3,7 @@ Fast cryptographic hash of Python objects, with a special case for fast
 hashing of numpy arrays.
 """
 
+
 # Author: Gael Varoquaux <gael dot varoquaux at normalesup dot org>
 # Copyright (c) 2009 Gael Varoquaux
 # License: BSD Style, 3 clauses.
@@ -18,10 +19,7 @@ import types
 import six
 
 
-if six.PY3:
-    Pickler = pickle._Pickler
-else:
-    Pickler = pickle.Pickler
+Pickler = pickle._Pickler if six.PY3 else pickle.Pickler
 
 
 class _ConsistentSet(object):
@@ -79,10 +77,7 @@ class Hasher(Pickler):
         if isinstance(obj, (types.MethodType, type({}.pop))):
             # the Pickler cannot pickle instance methods; here we decompose
             # them into components that make them uniquely identifiable
-            if hasattr(obj, "__func__"):
-                func_name = obj.__func__.__name__
-            else:
-                func_name = obj.__name__
+            func_name = obj.__func__.__name__ if hasattr(obj, "__func__") else obj.__name__
             inst = obj.__self__
             if type(inst) == type(pickle):
                 obj = _MyHash(func_name, inst.__name__)
@@ -99,7 +94,7 @@ class Hasher(Pickler):
         # For example we want ['aa', 'aa'] and ['aa', 'aaZ'[:2]]
         # to hash to the same value and that's why we disable memoization
         # for strings
-        if isinstance(obj, six.string_types) or isinstance(obj, six.text_type):
+        if isinstance(obj, (six.string_types, six.text_type)):
             return
         Pickler.memoize(self, obj)
 
@@ -177,10 +172,7 @@ class NumpyHasher(Hasher):
         import numpy as np
 
         self.np = np
-        if hasattr(np, "getbuffer"):
-            self._getbuffer = np.getbuffer
-        else:
-            self._getbuffer = memoryview
+        self._getbuffer = np.getbuffer if hasattr(np, "getbuffer") else memoryview
 
     def save(self, obj):
         """ Subclass the save method, to hash ndarray subclass, rather
@@ -190,20 +182,18 @@ class NumpyHasher(Hasher):
         if isinstance(obj, self.np.ndarray) and not obj.dtype.hasobject:
             # Compute a hash of the object
             # The update function of the hash requires a c_contiguous buffer.
-            if obj.shape == ():
+            if (
+                obj.shape == ()
+                or not obj.flags.c_contiguous
+                and not obj.flags.f_contiguous
+            ):
                 # 0d arrays need to be flattened because viewing them as bytes
                 # raises a ValueError exception.
                 obj_c_contiguous = obj.flatten()
             elif obj.flags.c_contiguous:
                 obj_c_contiguous = obj
-            elif obj.flags.f_contiguous:
-                obj_c_contiguous = obj.T
             else:
-                # Cater for non-single-segment arrays: this creates a
-                # copy, and thus aleviates this issue.
-                # XXX: There might be a more efficient way of doing this
-                obj_c_contiguous = obj.flatten()
-
+                obj_c_contiguous = obj.T
             # memoryview is not supported for some dtypes, e.g. datetime64, see
             # https://github.com/numpy/numpy/issues/4983. The
             # workaround is to view the array as bytes before
@@ -242,7 +232,7 @@ class NumpyHasher(Hasher):
         Hasher.save(self, obj)
 
 
-cache = dict()
+cache = {}
 
 
 def hash(obj, hash_name="md5", coerce_mmap=False):
@@ -261,7 +251,7 @@ def hash(obj, hash_name="md5", coerce_mmap=False):
     obj_id = id(obj)
 
     if obj_id not in cache:
-        cache[obj_id] = dict()
+        cache[obj_id] = {}
 
     if hash_name not in cache[obj_id]:
         if "numpy" in sys.modules:

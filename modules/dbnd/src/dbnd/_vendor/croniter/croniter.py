@@ -183,10 +183,7 @@ class croniter(object):
             expanded[2] = ['*']
 
             t2 = self._calc(self.cur, expanded, nth_weekday_of_month, is_prev)
-            if not is_prev:
-                result = t1 if t1 < t2 else t2
-            else:
-                result = t1 if t1 > t2 else t2
+            result = max(t1, t2) if is_prev else min(t1, t2)
         else:
             result = self._calc(self.cur, expanded,
                                 nth_weekday_of_month, is_prev)
@@ -208,14 +205,16 @@ class croniter(object):
                 dtresult_utcoffset - dtstarttime_utcoffset
             )
         hours_before_midnight = 24 - dtstarttime.hour
-        if dtresult_utcoffset != dtstarttime_utcoffset:
-            if ((lag > 0 and lag_hours >= hours_before_midnight)
-                or (lag < 0 and
-                    ((3600*lag_hours+abs(lag)) >= hours_before_midnight*3600))
-            ):
-                dtresult = dtresult - datetime.timedelta(seconds=lag)
-                result = self._datetime_to_timestamp(dtresult)
-                self.dst_start_time = result
+        if dtresult_utcoffset != dtstarttime_utcoffset and (
+            (lag > 0 and lag_hours >= hours_before_midnight)
+            or (
+                lag < 0
+                and ((3600 * lag_hours + abs(lag)) >= hours_before_midnight * 3600)
+            )
+        ):
+            dtresult = dtresult - datetime.timedelta(seconds=lag)
+            result = self._datetime_to_timestamp(dtresult)
+            self.dst_start_time = result
         self.cur = result
         if issubclass(ret_type, datetime.datetime):
             result = dtresult
@@ -226,12 +225,12 @@ class croniter(object):
             now = math.ceil(now)
             nearest_diff_method = self._get_prev_nearest_diff
             sign = -1
-            offset = (len(expanded) == 6 or now % 60 > 0) and 1 or 60
+            offset = 1 if (len(expanded) == 6 or now % 60 > 0) else 60
         else:
             now = math.floor(now)
             nearest_diff_method = self._get_next_nearest_diff
             sign = 1
-            offset = (len(expanded) == 6) and 1 or 60
+            offset = 1 if len(expanded) == 6 else 60
 
         dst = now = self._timestamp_to_datetime(now + sign * offset)
 
@@ -440,25 +439,11 @@ class croniter(object):
                 return d - x
         if 'l' in candidates:
             return -x
-        candidate = candidates[0]
-        for c in candidates:
-            # fixed: c < range_val
-            # this code will reject all 31 day of month, 12 month, 59 second,
-            # 23 hour and so on.
-            # if candidates has just a element, this will not harmful.
-            # but candidates have multiple elements, then values equal to
-            # range_val will rejected.
-            if c <= range_val:
-                candidate = c
-                break
-
+        candidate = next((c for c in candidates if c <= range_val), candidates[0])
         return (candidate - x - range_val)
 
     def is_leap(self, year):
-        if year % 400 == 0 or (year % 4 == 0 and year % 100 != 0):
-            return True
-        else:
-            return False
+        return year % 400 == 0 or (year % 4 == 0 and year % 100 != 0)
 
     @classmethod
     def expand(cls, expr_format):

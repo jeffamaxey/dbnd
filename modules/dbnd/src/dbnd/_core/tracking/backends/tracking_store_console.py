@@ -66,7 +66,7 @@ class ConsoleStore(TrackingStore):
         if run.is_orchestration:
             logger.info(
                 run.describe.run_banner(
-                    "Running Databand v%s" % run.context.task_run_env.databand_version,
+                    f"Running Databand v{run.context.task_run_env.databand_version}",
                     color="cyan",
                     show_run_info=True,
                 )
@@ -81,7 +81,7 @@ class ConsoleStore(TrackingStore):
         task = task_run.task
         logger.info(
             task.ctrl.visualiser.banner(
-                "Task %s has been completed already!" % task.task_id,
+                f"Task {task.task_id} has been completed already!",
                 "magenta",
                 task_run=task_run,
             )
@@ -112,29 +112,29 @@ class ConsoleStore(TrackingStore):
         level = logging.INFO
         color = "cyan"
         task_friendly_id = task_run.task_af_id
-        task_id_str = "%s(%s)" % (task.task_id, task_friendly_id)
+        task_id_str = f"{task.task_id}({task_friendly_id})"
         if state in [TaskRunState.RUNNING, TaskRunState.QUEUED]:
-            task_msg = "Running task %s" % task_id_str
+            task_msg = f"Running task {task_id_str}"
 
         elif state == TaskRunState.SUCCESS:
-            task_msg = "Task %s has been completed!" % task_id_str
+            task_msg = f"Task {task_id_str} has been completed!"
             color = "green"
 
         elif state == TaskRunState.FAILED:
-            task_msg = "Task %s has failed!" % task_id_str
+            task_msg = f"Task {task_id_str} has failed!"
             color = "red"
             level = logging.WARNING
             if task_run.task.task_name in SystemTaskName.driver_and_submitter:
                 show_simple_log = True
 
         elif state == TaskRunState.CANCELLED:
-            task_msg = "Task %s has been canceled!" % task_id_str
+            task_msg = f"Task {task_id_str} has been canceled!"
             color = "red"
             level = logging.WARNING
             show_simple_log = True
 
         else:
-            task_msg = "Task %s moved to %s state" % (task_friendly_id, state)
+            task_msg = f"Task {task_friendly_id} moved to {state} state"
 
         if show_simple_log:
             logger.log(level, task_msg)
@@ -145,7 +145,7 @@ class ConsoleStore(TrackingStore):
                 level, task.ctrl.visualiser.banner(task_msg, color, task_run=task_run)
             )
         except Exception as ex:
-            logger.log(level, "%s , failed to create banner: %s" % (task_msg, ex))
+            logger.log(level, f"{task_msg} , failed to create banner: {ex}")
 
     def add_task_runs(self, run, task_runs):
         pass
@@ -158,7 +158,7 @@ class ConsoleStore(TrackingStore):
             "%s %s has registered URLs to external resources: %s",
             task,
             attempt_uid,
-            ", ".join("%s: %s" % (k, v) for k, v in six.iteritems(external_links_dict)),
+            ", ".join(f"{k}: {v}" for k, v in six.iteritems(external_links_dict)),
         )
 
     def is_ready(self):
@@ -193,17 +193,16 @@ class ConsoleStore(TrackingStore):
 
             # not will exists, but when it does - we need to add the stats as a table to the console
             if value_meta.columns_stats:
-                column_stats = value_meta.get_column_stats_by_col_name(column_name)
-                if column_stats:
+                if column_stats := value_meta.get_column_stats_by_col_name(
+                    column_name
+                ):
                     stats_table = two_columns_table(
                         column_stats.as_dict(), is_describe_stat
                     )
                     # channing the printable graph and status table
                     console_graph = chain(console_graph, stats_table.splitlines())
 
-            # separation line between one histogram and the other
-            console_graph = chain(console_graph, [""])
-            yield console_graph
+            yield chain(console_graph, [""])
 
     @staticmethod
     def _format_value(value):
@@ -234,6 +233,6 @@ class ConsoleStore(TrackingStore):
             )
         else:
             metrics_str = ", ".join(
-                ["{}={}".format(m.key, self._format_value(m.value)) for m in metrics]
+                [f"{m.key}={self._format_value(m.value)}" for m in metrics]
             )
             logger.info("Task %s metrics: %s", task_run.task_af_id, metrics_str)

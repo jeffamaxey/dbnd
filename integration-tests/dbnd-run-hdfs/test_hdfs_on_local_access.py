@@ -20,8 +20,7 @@ DEFAULT_SECOND_OUTPUT_HDFS_PATH = "hdfs://default/location/for_second_output.csv
 def pandas_data_frame():
     names = ["Bob", "Jessica", "Mary", "John", "Mel"]
     births = [968, 155, 77, 578, 973]
-    df = pd.DataFrame(data=list(zip(names, births)), columns=["Names", "Births"])
-    return df
+    return pd.DataFrame(data=list(zip(names, births)), columns=["Names", "Births"])
 
 
 def cmd_output(cmd):
@@ -50,8 +49,7 @@ def overwrite_target_task(df=parameter[pd.DataFrame]):
 
 @pipeline
 def overwrite_target_pipeline():
-    result = overwrite_target_task(pandas_data_frame())
-    return result
+    return overwrite_target_task(pandas_data_frame())
 
 
 class TestOverwritingTargetHdfs(object):

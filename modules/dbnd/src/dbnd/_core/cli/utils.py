@@ -26,8 +26,8 @@ class FastSingletonContext(object):
 class PrefixStore(object):
     def __init__(self, path):
         self._path = path
-        self._indices = dict()
-        self._objs = dict()
+        self._indices = {}
+        self._objs = {}
 
     def set(self, obj_id, obj):
         self._objs[obj_id] = obj
@@ -52,13 +52,13 @@ class PrefixStore(object):
                 continue
 
             return {obj_ref: self._objs[obj_id] for obj_ref, obj_id in entries}
-        return dict()
+        return {}
 
     def load(self):
         cache = json.load(open(self._path, "r"))
 
         # see https://github.com/google/pygtrie/issues/9
-        indices = dict()
+        indices = {}
         for index_name, index_val in cache["indices"].items():
             indices[index_name] = CharTrie()
             indices[index_name]._root.__setstate__(index_val)
@@ -67,9 +67,7 @@ class PrefixStore(object):
         self._objs = cache["objs"]
 
     def save(self):
-        cache = dict()
-
-        cache["indices"] = dict()
+        cache = {"indices": {}}
 
         # see https://github.com/google/pygtrie/issues/9
         for index_name, index_val in self._indices.items():

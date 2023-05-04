@@ -117,7 +117,7 @@ class _TaskWithParams(_BaseTask):
                 new_k[param_name] = getattr(self, param_name)
         new_k["task_name"] = self.task_name
 
-        new_k.update(kwargs)
+        new_k |= kwargs
         return cls(**new_k)
 
     @classmethod

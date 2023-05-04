@@ -100,10 +100,7 @@ class Mailmap(object):
                         canonical_identity[0] or identity[0],
                         canonical_identity[1] or identity[1])
                 break
-        if was_tuple:
-            return identity
-        else:
-            return identity[0] + b" <" + identity[1] + b">"
+        return identity if was_tuple else identity[0] + b" <" + identity[1] + b">"
 
     @classmethod
     def from_path(cls, path):

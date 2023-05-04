@@ -38,10 +38,7 @@ def _get_tracker():
     """
     from dbnd._core.task_run.current_task_run import try_get_or_create_task_run
 
-    task_run = try_get_or_create_task_run()
-    if task_run:
-        return task_run.tracker
-    return None
+    return task_run.tracker if (task_run := try_get_or_create_task_run()) else None
 
 
 def log_data(
@@ -173,14 +170,13 @@ def log_metric(key, value, source="user"):
             alpha *= 1.1
             log_metric("alpha", alpha)
     """
-    tracker = _get_tracker()
-    if tracker:
+    if tracker := _get_tracker():
         tracker.log_metric(key, value, source=source)
         return
 
     message = TRACKER_MISSING_MESSAGE % ("log_metric",)
     get_one_time_logger().log_once(message, "log_metric", logging.WARNING)
-    logger.info("Log {} Metric '{}'='{}'".format(source.capitalize(), key, value))
+    logger.info(f"Log {source.capitalize()} Metric '{key}'='{value}'")
     return
 
 
@@ -201,8 +197,7 @@ def log_metrics(metrics_dict, source="user", timestamp=None):
             # all lower alphabet chars -> {"a": 97,..., "z": 122}
             log_metrics({chr(i): i for i in range(97, 123)})
     """
-    tracker = _get_tracker()
-    if tracker:
+    if tracker := _get_tracker():
         tracker.log_metrics(metrics_dict, source=source, timestamp=timestamp)
         return
 
@@ -230,8 +225,7 @@ def log_artifact(key, artifact):
             data.write(lorem)
             log_artifact("my_tmp_file", str(data))
     """
-    tracker = _get_tracker()
-    if tracker:
+    if tracker := _get_tracker():
         tracker.log_artifact(key, artifact)
         return
 

@@ -179,10 +179,7 @@ class TaskDecorator(object):
         if not current:
             # no tracking/no orchestration,
             # falling back to "natural call" of the class_or_func
-            message = (
-                "Can't report tracking info. %s is decorated with @task, but no tracking context was found"
-                % (self.class_or_func.__name__,)
-            )
+            message = f"Can't report tracking info. {self.class_or_func.__name__} is decorated with @task, but no tracking context was found"
             get_one_time_logger().log_once(message, "task_decorator", logging.WARNING)
             return self.class_or_func(*call_args, **call_kwargs)
 
@@ -204,12 +201,7 @@ class TaskDecorator(object):
 
             # we are in the band, and if user_code() is called we want to remove redundant
             # `user_code().result` usage
-            if t.task_definition.single_result_output:
-                return t.result
-
-            # we have multiple outputs (more than one "output" parameter)
-            # just return task object, user will use it as `user_code().output_1`
-            return t
+            return t.result if t.task_definition.single_result_output else t
         elif phase is TaskContextPhase.RUN:
             # we are "running" inside some other task execution (orchestration!)
             #  (inside user_defined_function() or UserDefinedTask.run()
@@ -359,18 +351,18 @@ class _UserClassWithTaskDecoratorMetaclass(type):
 
     task_decorator = None  # type: TaskDecorator
 
-    def __call__(cls, *args, **kwargs):
+    def __call__(self, *args, **kwargs):
         """
         wrap user class ,so on user_class() we run _item_call first and if required we return task object inplace
         """
         if kwargs.pop("__call_original_cls", False):
-            return super(_UserClassWithTaskDecoratorMetaclass, cls).__call__(
+            return super(_UserClassWithTaskDecoratorMetaclass, self).__call__(
                 *args, **kwargs
             )
 
         # prevent recursion call. next time we call cls() we will go into original ctor()
         kwargs["__call_original_cls"] = True
-        return cls.task_decorator.handle_callable_call(*args, **kwargs)
+        return self.task_decorator.handle_callable_call(*args, **kwargs)
 
     # exposing dbnd logic
     # so OriginalUserClass.task can be used

@@ -110,10 +110,10 @@ class TaskDefinition(object):
         self.task_config_section = self.task_passport.task_config_section
 
         # all the attributes that points to_Parameter
-        self.task_param_defs = dict()  # type: Dict[str, ParameterDefinition]
+        self.task_param_defs = {}
 
         # the defaults attribute
-        self.defaults = dict()  # type: Dict[ParameterDefinition, Any]
+        self.defaults = {}
 
         self.task_param_defs = self._calculate_task_class_values(
             classdict, external_parameters
@@ -153,7 +153,7 @@ class TaskDefinition(object):
     def _calculate_task_class_values(self, classdict, external_parameters):
         # type: (Optional[Dict],  Optional[Parameters]) -> Dict[str, ParameterDefinition]
         # reflect inherited attributes
-        params = dict()
+        params = {}
         # params will contain definition of param, even it's was overrided by the parent task
         for base_schema in self.base_task_definitions:
             params = combine_mappings(params, base_schema.task_param_defs)
@@ -169,7 +169,7 @@ class TaskDefinition(object):
 
             func_params_builder.build_func_params()
             params_dict = dict(func_params_builder.decorator_kwargs_params)
-            params_dict.update(func_params_builder.func_spec_params)
+            params_dict |= func_params_builder.func_spec_params
             params_dict.update(func_params_builder.result_params)
 
             self._update_params_from_attributes(params_dict, params)
@@ -184,11 +184,10 @@ class TaskDefinition(object):
             # add parameters config
             param_with_owner = param.evolve_with_owner(task_definition=self, name=name)
 
-            # updated the owner in the external parameters
-            param_value = external_parameters and external_parameters.get_param_value(
-                name
-            )
-            if param_value:
+            if (
+                param_value := external_parameters
+                and external_parameters.get_param_value(name)
+            ):
                 param_value.parameter = param_with_owner
 
             updated_params[name] = param_with_owner
@@ -198,19 +197,19 @@ class TaskDefinition(object):
 
     def _calculate_task_defaults(self, defaults):
         # type: (...)->  Dict[str, Any]
-        base_defaults = dict()
+        base_defaults = {}
         for base_schema in self.base_task_definitions:
             base_defaults = combine_mappings(base_defaults, base_schema.defaults)
 
         return combine_mappings(base_defaults, defaults)
 
     def _update_params_from_attributes(self, classdict, params):
-        class_values = dict()
+        class_values = {}
         if not classdict:
             return
 
         for a_name, a_obj in iteritems(classdict):
-            context = "%s.%s" % (self.task_family, a_name)
+            context = f"{self.task_family}.{a_name}"
             try:
                 if isinstance(a_obj, ParameterFactory):
                     params[a_name] = a_obj.build_parameter(context)
@@ -219,7 +218,7 @@ class TaskDefinition(object):
                 else:
                     class_values[a_name] = a_obj
             except Exception:
-                logger.warning("Failed to process %s" % context)
+                logger.warning(f"Failed to process {context}")
                 raise
 
         # now, if we have overloads in code ( calculated in task_definition):
@@ -250,12 +249,12 @@ class TaskDefinition(object):
         return True
 
     def __str__(self):
-        return "TaskDefinition(%s)" % self.full_task_family
+        return f"TaskDefinition({self.full_task_family})"
 
     def run_name(self):
         if self.task_decorator:
-            return "%s()" % self.full_task_family
-        return "%s.run()" % self.full_task_family
+            return f"{self.full_task_family}()"
+        return f"{self.full_task_family}.run()"
 
 
 def get_base_task_definitions(task_class):

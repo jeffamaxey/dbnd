@@ -20,14 +20,14 @@ from targets.types import DataList
     task_target_date=parameter[datetime.date],
 )
 def external_stream(root_location, task_target_date):
-    return target(root_location, "%s.txt" % task_target_date.strftime("%Y-%m-%d"))
+    return target(root_location, f'{task_target_date.strftime("%Y-%m-%d")}.txt')
 
 
 @task
 def stream(seed=1):
     r = random.Random(x=seed)
     return [
-        "{} {} {}".format(r.randint(0, 999), r.randint(0, 999), r.randint(0, 999))
+        f"{r.randint(0, 999)} {r.randint(0, 999)} {r.randint(0, 999)}"
         for _ in range(1000)
     ]
 
@@ -40,9 +40,7 @@ def aggregate_artists(stream):
         _, artist, track = l.strip().split()
         artist_count[artist] += 1
 
-    return [
-        "{}\t{}".format(artist, count) for artist, count in six.iteritems(artist_count)
-    ]
+    return [f"{artist}\t{count}" for artist, count in six.iteritems(artist_count)]
 
 
 @task
@@ -61,12 +59,11 @@ def top_n_artists(artists, n_largest=10):
 def top_artists_report(task_target_date, period=timedelta(days=2)):
     logging.info("top_artists_report")
     streams = [
-        stream(task_name="Stream_%s" % i, task_target_date=d)
+        stream(task_name=f"Stream_{i}", task_target_date=d)
         for i, d in enumerate(period_dates(task_target_date, period))
     ]
     artists = aggregate_artists(stream=data_combine(streams))
-    top_n = top_n_artists(artists=artists)
-    return top_n
+    return top_n_artists(artists=artists)
 
 
 @band

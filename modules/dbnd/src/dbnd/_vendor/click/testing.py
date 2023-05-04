@@ -65,9 +65,7 @@ def make_input_stream(input, charset):
         input = b''
     elif not isinstance(input, bytes):
         input = input.encode(charset)
-    if PY2:
-        return StringIO(input)
-    return io.BytesIO(input)
+    return StringIO(input) if PY2 else io.BytesIO(input)
 
 
 class Result(object):
@@ -109,10 +107,7 @@ class Result(object):
 
 
     def __repr__(self):
-        return '<%s %s>' % (
-            type(self).__name__,
-            self.exception and repr(self.exception) or 'okay',
-        )
+        return f"<{type(self).__name__} {self.exception and repr(self.exception) or 'okay'}>"
 
 
 class CliRunner(object):
@@ -156,7 +151,7 @@ class CliRunner(object):
         """Returns the environment overrides for invoking a script."""
         rv = dict(self.env)
         if overrides:
-            rv.update(overrides)
+            rv |= overrides
         return rv
 
     @contextlib.contextmanager
@@ -234,9 +229,7 @@ class CliRunner(object):
         default_color = color
 
         def should_strip_ansi(stream=None, color=None):
-            if color is None:
-                return not default_color
-            return not color
+            return not default_color if color is None else not color
 
         old_visible_prompt_func = clickpkg.termui.visible_prompt_func
         old_hidden_prompt_func = clickpkg.termui.hidden_prompt_func
@@ -252,20 +245,16 @@ class CliRunner(object):
             for key, value in iteritems(env):
                 old_env[key] = os.environ.get(key)
                 if value is None:
-                    try:
+                    with contextlib.suppress(Exception):
                         del os.environ[key]
-                    except Exception:
-                        pass
                 else:
                     os.environ[key] = value
             yield (bytes_output, not self.mix_stderr and bytes_error)
         finally:
             for key, value in iteritems(old_env):
                 if value is None:
-                    try:
+                    with contextlib.suppress(Exception):
                         del os.environ[key]
-                    except Exception:
-                        pass
                 else:
                     os.environ[key] = value
             sys.stdout = old_stdout
@@ -368,7 +357,5 @@ class CliRunner(object):
             yield t
         finally:
             os.chdir(cwd)
-            try:
+            with contextlib.suppress(OSError, IOError):
                 shutil.rmtree(t)
-            except (OSError, IOError):
-                pass

@@ -48,7 +48,7 @@ def _build_prompt(text, suffix, show_default=False, default=None, show_choices=T
     if type is not None and show_choices and isinstance(type, Choice):
         prompt += ' (' + ", ".join(map(str, type.choices)) + ')'
     if default is not None and show_default:
-        prompt = '%s [%s]' % (prompt, default)
+        prompt = f'{prompt} [{default}]'
     return prompt + suffix
 
 
@@ -125,7 +125,7 @@ def prompt(text, default=None, hide_input=False, confirmation_prompt=False,
         try:
             result = value_proc(value)
         except UsageError as e:
-            echo('Error: %s' % e.message, err=err)
+            echo(f'Error: {e.message}', err=err)
             continue
         if not confirmation_prompt:
             return result
@@ -198,11 +198,7 @@ def get_terminal_size():
     # inside a subprocess. Without this, it would not provide a useful input.
     if get_winterm_size is not None:
         size = get_winterm_size()
-        if size == (0, 0):
-            return (79, 24)
-        else:
-            return size
-
+        return (79, 24) if size == (0, 0) else size
     def ioctl_gwinsz(fd):
         try:
             import fcntl

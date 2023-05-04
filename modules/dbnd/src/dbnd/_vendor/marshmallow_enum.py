@@ -64,9 +64,7 @@ class EnumField(fields.Field):
 
         if load_by not in LoadDumpOptions:
             raise ValueError(
-                "Invalid selection for load_by must be EnumField.VALUE or EnumField.NAME, got {}".format(
-                    load_by
-                )
+                f"Invalid selection for load_by must be EnumField.VALUE or EnumField.NAME, got {load_by}"
             )
 
         if dump_by is None:
@@ -74,9 +72,7 @@ class EnumField(fields.Field):
 
         if dump_by not in LoadDumpOptions:
             raise ValueError(
-                "Invalid selection for load_by must be EnumField.VALUE or EnumField.NAME, got {}".format(
-                    dump_by
-                )
+                f"Invalid selection for load_by must be EnumField.VALUE or EnumField.NAME, got {dump_by}"
             )
 
         self.load_by = load_by
@@ -120,10 +116,7 @@ class EnumField(fields.Field):
         kwargs["names"] = ", ".join([mem.name for mem in self.enum])
 
         if self.error:
-            if self.by_value:
-                kwargs["choices"] = kwargs["values"]
-            else:
-                kwargs["choices"] = kwargs["names"]
+            kwargs["choices"] = kwargs["values"] if self.by_value else kwargs["names"]
             msg = self.error.format(**kwargs)
             raise ValidationError(msg)
         else:

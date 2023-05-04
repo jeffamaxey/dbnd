@@ -148,18 +148,19 @@ class SqlQueryExtractor:
             # identify nested query is select
             if token.normalized == "SELECT":
                 is_select_query = True
-            # only select nested queries are supported
             elif is_select_query:
                 # TODO: we might want to parse query columns for nested read operations
                 # if isinstance(token, IdentifierList):
                 # columns.append(Column(dataset_name='',name=token.normalized, alias=token.normalized))
                 if token.normalized in READ_OPERATIONS:
-                    next = self._next_non_empty_token(nested_idx, nested_statement)
-                    if not next:
+                    if next := self._next_non_empty_token(
+                        nested_idx, nested_statement
+                    ):
+                        extracted, nested_idx, columns = self.handle_read_operation(
+                            nested_idx, next[1], columns, {}
+                        )
+                    else:
                         continue
-                    extracted, nested_idx, columns = self.handle_read_operation(
-                        nested_idx, next[1], columns, {}
-                    )
             nested_idx += 1
         return extracted, nested_idx, columns
 
@@ -196,8 +197,7 @@ class SqlQueryExtractor:
         :param Identifier next_token: query identifier
 
         """
-        cloud_uri_path = self.extract_cloud_uri(next_token)
-        if cloud_uri_path:
+        if cloud_uri_path := self.extract_cloud_uri(next_token):
             table_alias = self.calculate_file_path(cloud_uri_path)
             table_name = table_alias
             columns = [
@@ -295,7 +295,7 @@ class SqlQueryExtractor:
                 if col.dataset_name in dynamic:
                     dynamic_table_schema = dynamic[col.dataset_name]
                     if col.is_wildcard:
-                        result.update(dynamic_table_schema)
+                        result |= dynamic_table_schema
 
                     elif col.name in dynamic_table_schema:
                         result[col.name].extend(dynamic_table_schema[col.name])

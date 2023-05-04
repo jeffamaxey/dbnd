@@ -26,13 +26,15 @@ class TaskRunLogManager(TaskRunCtrl):
         super(TaskRunLogManager, self).__init__(task_run)
 
         self.local_log_file = self.task_run.local_task_run_root.partition(
-            name="%s.log" % task_run.attempt_number
-        )  # type: FileTarget
+            name=f"{task_run.attempt_number}.log"
+        )
 
         if environ_enabled("DBND__LOG_SPARK"):
-            self.local_spark_log_file = self.task_run.local_task_run_root.partition(
-                name="%s-spark.log" % task_run.attempt_number
-            )  # type: FileTarget
+            self.local_spark_log_file = (
+                self.task_run.local_task_run_root.partition(
+                    name=f"{task_run.attempt_number}-spark.log"
+                )
+            )
         else:
             self.local_spark_log_file = None
 

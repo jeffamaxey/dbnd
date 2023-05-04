@@ -20,18 +20,17 @@ class RunBanner(RunCtrl):
 
     def _add_tasks_info(self, b):
         run = self.run
-        reused = sum(
-            tr.is_reused and not tr.is_skipped_as_not_required for tr in run.task_runs
-        )
         optimizations = []
-        if reused:
+        if reused := sum(
+            tr.is_reused and not tr.is_skipped_as_not_required
+            for tr in run.task_runs
+        ):
             optimizations.append(
                 "There are {completed} reused tasks.".format(completed=reused)
             )
-        task_skipped_as_not_required = sum(
+        if task_skipped_as_not_required := sum(
             tr.is_reused and tr.is_skipped_as_not_required for tr in run.task_runs
-        )
-        if task_skipped_as_not_required:
+        ):
             optimizations.append(
                 " {skipped} tasks are not required by any uncompleted task "
                 "that is essential for your root task.".format(
@@ -64,8 +63,6 @@ class RunBanner(RunCtrl):
 
         b = TextBanner(msg, color)
         ctx = run.context
-        task_run_env = ctx.task_run_env  # type: TaskRunEnvInfo
-
         if run.context.tracking_store.has_tracking_store("api", channel_name="web"):
             b.column("TRACKER URL", run.run_url, skip_if_empty=True)
 
@@ -89,9 +86,11 @@ class RunBanner(RunCtrl):
 
         if show_run_info:
             b.new_line()
+            task_run_env = ctx.task_run_env  # type: TaskRunEnvInfo
+
             run_params = [
                 ("user", task_run_env.user),
-                ("run_uid", "%s" % run.run_uid),
+                ("run_uid", f"{run.run_uid}"),
                 ("env", run.env.name),
                 ("project", run.project_name) if run.project_name else None,
                 ("user_code_version", task_run_env.user_code_version),
@@ -106,8 +105,8 @@ class RunBanner(RunCtrl):
 
         if run.is_orchestration:
             run_executor = run.run_executor
-            driver_task_run = run.driver_task_run
             if show_run_info:
+                driver_task_run = run.driver_task_run
                 if driver_task_run and driver_task_run.log:
                     b.column(
                         "LOG",
@@ -139,12 +138,11 @@ class RunBanner(RunCtrl):
 
                 if show_tasks_info:
                     self._add_tasks_info(b)
-                failed_task_runs = [
+                if failed_task_runs := [
                     task_run
                     for task_run in run.get_task_runs()
                     if task_run.task_run_state == TaskRunState.FAILED
-                ]
-                if failed_task_runs:
+                ]:
                     f_msg = "\n".join(tr.task.task_id for tr in failed_task_runs)
                     b.column("FAILED", f_msg)
         b.new_line()

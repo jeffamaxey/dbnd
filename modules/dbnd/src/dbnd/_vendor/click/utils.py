@@ -212,22 +212,14 @@ def echo(message=None, file=None, nl=True, err=False, color=None):
                   default is autodetection.
     """
     if file is None:
-        if err:
-            file = _default_text_stderr()
-        else:
-            file = _default_text_stdout()
-
+        file = _default_text_stderr() if err else _default_text_stdout()
     # Convert non bytes/text into the native string type.
     if message is not None and not isinstance(message, echo_native_types):
         message = text_type(message)
 
     if nl:
         message = message or u''
-        if isinstance(message, text_type):
-            message += u'\n'
-        else:
-            message += b'\n'
-
+        message += u'\n' if isinstance(message, text_type) else b'\n'
     # If there is a message, and we're in Python 3, and the value looks
     # like bytes, we manually need to find the binary stream and write the
     # message in there.  This is done separately so that most stream
@@ -401,13 +393,13 @@ def get_app_dir(app_name, roaming=True, force_posix=False):
                         application support folder.
     """
     if WIN:
-        key = roaming and 'APPDATA' or 'LOCALAPPDATA'
+        key = 'APPDATA' if roaming else 'LOCALAPPDATA'
         folder = os.environ.get(key)
         if folder is None:
             folder = os.path.expanduser('~')
         return os.path.join(folder, app_name)
     if force_posix:
-        return os.path.join(os.path.expanduser('~/.' + _posixify(app_name)))
+        return os.path.join(os.path.expanduser(f'~/.{_posixify(app_name)}'))
     if sys.platform == 'darwin':
         return os.path.join(os.path.expanduser(
             '~/Library/Application Support'), app_name)

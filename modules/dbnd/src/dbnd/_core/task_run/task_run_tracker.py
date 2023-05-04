@@ -47,14 +47,15 @@ class TaskRunTracker(TaskRunCtrl):
 
     def task_run_url(self):
         run_tracker = self.run.tracker
-        if not run_tracker.databand_url:
-            return None
-
-        return "{databand_url}/app/jobs/{job_name}/{run_uid}/{task_run_uid}".format(
-            databand_url=run_tracker.databand_url,
-            job_name=self.run.job_name,
-            run_uid=self.run.run_uid,
-            task_run_uid=self.task_run_uid,
+        return (
+            "{databand_url}/app/jobs/{job_name}/{run_uid}/{task_run_uid}".format(
+                databand_url=run_tracker.databand_url,
+                job_name=self.run.job_name,
+                run_uid=self.run.run_uid,
+                task_run_uid=self.task_run_uid,
+            )
+            if run_tracker.databand_url
+            else None
         )
 
     # Task Handlers
@@ -94,7 +95,7 @@ class TaskRunTracker(TaskRunCtrl):
             )
         except Exception as ex:
             log_exception(
-                "Error occurred during target logging for %s" % (target,),
+                f"Error occurred during target logging for {target}",
                 ex,
                 non_critical=True,
             )
@@ -137,7 +138,7 @@ class TaskRunTracker(TaskRunCtrl):
             )
         except Exception as ex:
             log_exception(
-                "Error occurred during log_artifact for %s" % (name,),
+                f"Error occurred during log_artifact for {name}",
                 ex,
                 non_critical=True,
             )
@@ -148,7 +149,7 @@ class TaskRunTracker(TaskRunCtrl):
             self.log_metrics({key: value}, source, timestamp)
         except Exception as ex:
             log_exception(
-                "Error occurred during log_metric for %s" % (key,),
+                f"Error occurred during log_metric for {key}",
                 ex,
                 non_critical=True,
             )
@@ -192,7 +193,7 @@ class TaskRunTracker(TaskRunCtrl):
 
         except Exception as ex:
             log_exception(
-                "Error occurred during log_dataframe for %s" % (key,),
+                f"Error occurred during log_dataframe for {key}",
                 ex,
                 non_critical=not raise_on_error,
             )
@@ -210,7 +211,7 @@ class TaskRunTracker(TaskRunCtrl):
                 task_run=self.task_run, key=key, value_meta=value_meta, timestamp=ts
             )
         if not (metrics["user"] or metrics["histograms"]):
-            logger.info("No metrics to log_data(key={})".format(key))
+            logger.info(f"No metrics to log_data(key={key})")
 
     def log_dataset(self, op_report):
         # type: (DatasetOperationReport) -> None
@@ -292,10 +293,7 @@ def _get_dataset_name(operation_path, with_partition):
 
     # we might not successfully extract a name from the path so as a
     # fallback we return the original value
-    if dataset_name == "":
-        return operation_path
-
-    return dataset_name
+    return dataset_name if dataset_name else operation_path
 
 
 @attr.s(slots=True, frozen=False, kw_only=True)
@@ -331,9 +329,7 @@ class DatasetOperationReport(object):
                 setattr(self, k, v)
             else:
                 logger.warning(
-                    "Can't set attribute {} for DatasetOperationLogger, no such attribute".format(
-                        k
-                    )
+                    f"Can't set attribute {k} for DatasetOperationLogger, no such attribute"
                 )
 
     def set_data(self, data):

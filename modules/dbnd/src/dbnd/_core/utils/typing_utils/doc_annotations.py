@@ -16,8 +16,7 @@ _TUPLE_TYPE_RE = re.compile(r"^Tuple\[(.+)]$")
 
 
 def get_Tuple_params(type_str):
-    tuple_def = _TUPLE_TYPE_RE.search(type_str)
-    if tuple_def:
+    if tuple_def := _TUPLE_TYPE_RE.search(type_str):
         return _split(tuple_def.group(1))
     return None
 
@@ -27,8 +26,7 @@ _LIST_TYPE_RE = re.compile(r"^\((.+)\)$")
 
 
 def get_inline_Tuple_params(type_str):
-    list_type = _LIST_TYPE_RE.search(type_str)
-    if list_type:
+    if list_type := _LIST_TYPE_RE.search(type_str):
         return _split(list_type.group(1))
     return None
 
@@ -45,7 +43,7 @@ def _split(type_str):
     current_part = parts.pop(0)
     while parts:
         if len(re.findall(r"\[", current_part)) > len(re.findall("]", current_part)):
-            current_part += "," + parts.pop(0)
+            current_part += f",{parts.pop(0)}"
         else:
             result.append(current_part)
             current_part = parts.pop(0)
@@ -61,9 +59,7 @@ def _parse_return_type(return_types):
         return list_type
 
     tuple_types = get_Tuple_params(return_types)
-    if tuple_types is not None:
-        return tuple_types
-    return return_types
+    return tuple_types if tuple_types is not None else return_types
 
 
 def _parse_python_2_type_hint_line(typehint_string):
@@ -76,8 +72,7 @@ def _parse_python_2_type_hint_line(typehint_string):
     search_results = TYPE_HINT_RE.search(typehint_string)
     if not search_results:
         raise InvalidTypeHint(
-            "%s does not match type hint spec regex %s"
-            % (typehint_string, TYPE_HINT_RE)
+            f"{typehint_string} does not match type hint spec regex {TYPE_HINT_RE}"
         )
 
     arg_types = _split(search_results.group(1))
@@ -102,7 +97,7 @@ def parse_arg_types_for_callable(func):
         # This is how Databricks passes pyspark scripts wo we have to workaround it.
         from dbnd._core.log import dbnd_log_info_error
 
-        dbnd_log_info_error("Failed to parse doc string for function %s" % func)
+        dbnd_log_info_error(f"Failed to parse doc string for function {func}")
         return None, None
 
     def_statements = 0

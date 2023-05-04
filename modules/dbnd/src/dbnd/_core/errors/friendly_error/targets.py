@@ -3,21 +3,19 @@ from dbnd._core.errors import DatabandRuntimeError
 
 def data_frame_dict_value_should_be_dict(target, value):
     return DatabandRuntimeError(
-        "Can't dump %s to %s': value should be Mapping[str,DataFrame]"
-        % (type(value), target)
+        f"Can't dump {type(value)} to {target}': value should be Mapping[str,DataFrame]"
     )
 
 
 def dump_to_multi_target(target, value):
     return DatabandRuntimeError(
-        "Can't dump %s to %s': target is multi target (read only)"
-        % (type(value), target)
+        f"Can't dump {type(value)} to {target}': target is multi target (read only)"
     )
 
 
 def dump_generator_to_file(target):
     return DatabandRuntimeError(
-        "Can't dump generator (multiple parts) to %s': target is not directory" % target
+        f"Can't dump generator (multiple parts) to {target}': target is not directory"
     )
 
 
@@ -47,7 +45,7 @@ def no_format(target, options_message):
 
 def type_without_parse_from_str(value_type):
     return DatabandRuntimeError(
-        "Value type {} doesn't support parse_from_str".format(value_type),
+        f"Value type {value_type} doesn't support parse_from_str",
         help_msg="Review type implementation and set support_parse_from_str flag to True",
     )
 

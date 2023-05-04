@@ -6,9 +6,7 @@ def set_shown(ex):
 
 
 def is_shown(ex):
-    if not ex:
-        return False
-    return getattr(ex, _SHOWN_ATTR, False)
+    return getattr(ex, _SHOWN_ATTR, False) if ex else False
 
 
 def log_error(logger, ex, msg, *msg_args):

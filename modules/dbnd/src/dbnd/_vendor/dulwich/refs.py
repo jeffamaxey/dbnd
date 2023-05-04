@@ -85,11 +85,7 @@ def check_ref_format(refname):
         return False
     if refname.endswith(b".lock"):
         return False
-    if b"@{" in refname:
-        return False
-    if b"\\" in refname:
-        return False
-    return True
+    return False if b"@{" in refname else b"\\" not in refname
 
 
 class RefsContainer(object):
@@ -162,10 +158,7 @@ class RefsContainer(object):
         :return: An unsorted set of valid refs in this container, including
             packed refs.
         """
-        if base is not None:
-            return self.subkeys(base)
-        else:
-            return self.allkeys()
+        return self.subkeys(base) if base is not None else self.allkeys()
 
     def subkeys(self, base):
         """Refs present in this container under a base.
@@ -174,12 +167,12 @@ class RefsContainer(object):
         :return: A set of valid refs in this container under the base; the base
             prefix is stripped from the ref names returned.
         """
-        keys = set()
         base_len = len(base) + 1
-        for refname in self.allkeys():
-            if refname.startswith(base):
-                keys.add(refname[base_len:])
-        return keys
+        return {
+            refname[base_len:]
+            for refname in self.allkeys()
+            if refname.startswith(base)
+        }
 
     def as_dict(self, base=None):
         """Return the contents of this container as a dictionary.
@@ -187,10 +180,7 @@ class RefsContainer(object):
         """
         ret = {}
         keys = self.keys(base)
-        if base is None:
-            base = b""
-        else:
-            base = base.rstrip(b"/")
+        base = b"" if base is None else base.rstrip(b"/")
         for key in keys:
             try:
                 ret[key] = self[(base + b"/" + key).strip(b"/")]
@@ -264,14 +254,10 @@ class RefsContainer(object):
             DeprecationWarning,
         )
         refnames, contents = self.follow(name)
-        if not refnames:
-            return (None, contents)
-        return (refnames[-1], contents)
+        return (refnames[-1], contents) if refnames else (None, contents)
 
     def __contains__(self, refname):
-        if self.read_ref(refname):
-            return True
-        return False
+        return bool(self.read_ref(refname))
 
     def __getitem__(self, name):
         """Get the SHA1 for a reference name.
@@ -642,11 +628,7 @@ class DiskRefsContainer(RefsContainer):
         if self._peeled_refs is None or name not in self._packed_refs:
             # No cache: no peeled refs were read, or this ref is loose
             return None
-        if name in self._peeled_refs:
-            return self._peeled_refs[name]
-        else:
-            # Known not peelable
-            return self[name]
+        return self._peeled_refs[name] if name in self._peeled_refs else self[name]
 
     def read_loose_ref(self, name):
         """Read a reference file and return its contents.

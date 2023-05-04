@@ -34,7 +34,7 @@ def get_retry_policy(name, policy=None, seconds_to_sleep=5, max_retries=5):
             seconds_to_sleep=seconds_to_sleep, max_retries=max_retries
         )
     else:
-        raise DatabandConfigError("Retry policy '{}' not supported".format(policy))
+        raise DatabandConfigError(f"Retry policy '{policy}' not supported")
 
 
 class LinearRetryPolicy(object):
@@ -50,9 +50,7 @@ class LinearRetryPolicy(object):
             return False
         if status_code < 500 or error:
             return False
-        if self.max_retries != -1 and retry_count >= self.max_retries:
-            return False
-        return True
+        return self.max_retries == -1 or retry_count < self.max_retries
 
     def seconds_to_sleep(self, retry_count):
         return self._seconds_to_sleep
@@ -70,7 +68,7 @@ class ConfigurableRetryPolicy(LinearRetryPolicy):
         # a Linear Retry Policy by assigning a list of 1 element.
         if len(retry_seconds_to_sleep_list) == 0:
             retry_seconds_to_sleep_list = [5]
-        elif not all(n > 0 for n in retry_seconds_to_sleep_list):
+        elif any(n <= 0 for n in retry_seconds_to_sleep_list):
             raise DatabandConfigError(
                 "All items in the list in your config need to be positive for configurable retry policy"
             )
@@ -80,9 +78,7 @@ class ConfigurableRetryPolicy(LinearRetryPolicy):
 
     def seconds_to_sleep(self, retry_count):
         index = max(retry_count - 1, 0)
-        if index > self._max_index:
-            index = self._max_index
-
+        index = min(index, self._max_index)
         return self.retry_seconds_to_sleep_list[index]
 
 
@@ -94,6 +90,4 @@ class LinearRetryOnAnyError(LinearRetryPolicy):
         super(LinearRetryOnAnyError, self).__init__(seconds_to_sleep, max_retries)
 
     def should_retry(self, status_code, error, retry_count):
-        if self.max_retries != -1 and retry_count >= self.max_retries:
-            return False
-        return True
+        return self.max_retries == -1 or retry_count < self.max_retries

@@ -11,8 +11,6 @@ from dbnd._core.utils.basics.nothing import is_defined
 from dbnd._core.utils.basics.text_banner import safe_string
 
 
-if typing.TYPE_CHECKING:
-    pass
 logger = logging.getLogger(__name__)
 
 _MAX_PARAM_VALUE_AT_DB = 3000
@@ -26,11 +24,11 @@ def _safe_params(params):
 
 def _parameter_value_to_argparse_str(p, p_value):
     formatted_value = p.as_str_input(p_value)
-    if isinstance(p_value, list) or isinstance(p_value, dict):
-        formatted_value = '"{}"'.format(formatted_value)
+    if isinstance(p_value, (list, dict)):
+        formatted_value = f'"{formatted_value}"'
     if p.name == "task_env":
-        return ["--env", "{}".format(formatted_value)]
-    return ["--set", "{}={}".format(p.name, formatted_value)]
+        return ["--env", f"{formatted_value}"]
+    return ["--set", f"{p.name}={formatted_value}"]
 
 
 class TaskRepr(TaskSubCtrl):
@@ -65,7 +63,7 @@ class TaskRepr(TaskSubCtrl):
         result = {}
         for k, v in six.iteritems(self.task.task_config_override):
             if isinstance(k, ParameterDefinition):
-                k = "%s.%s" % (k.task_definition.task_family, k.name)
+                k = f"{k.task_definition.task_family}.{k.name}"
             result[k] = v
         return result
 
@@ -78,8 +76,7 @@ class TaskRepr(TaskSubCtrl):
         for p, p_value in self.__get_relevant_params():
             params.extend(_parameter_value_to_argparse_str(p, p_value))
 
-        overrides = self.__get_override_repr()
-        if overrides:
+        if overrides := self.__get_override_repr():
             for k, v in sorted(overrides.items()):
                 overrides_str = "'{param_name}':{param_value}".format(
                     param_name=k, param_value=repr(v)
@@ -98,8 +95,7 @@ class TaskRepr(TaskSubCtrl):
             )
             params.append(param)
 
-        overrides = self.__get_override_repr()
-        if overrides:
+        if overrides := self.__get_override_repr():
             for k, v in sorted(overrides.items()):
                 overrides_str = "'{param_name}':{param_value}".format(
                     param_name=k, param_value=repr(v)

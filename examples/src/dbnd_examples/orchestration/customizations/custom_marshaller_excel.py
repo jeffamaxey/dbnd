@@ -30,7 +30,7 @@ class MessageValueType(ValueType):
         return SizedMessage(parts[0], parts[1])
 
     def to_str(self, x):
-        return x.msg + ">" + str(x.size)
+        return f"{x.msg}>{str(x.size)}"
 
 
 # This registers value type with value type registry
@@ -44,8 +44,7 @@ z_file_ext = register_file_extension("z")
 class JoblibSizedMessageMarshaller(Marshaller):
     def target_to_value(self, target, **kwargs):
         with target.open() as fp:
-            from_file = joblib.load(fp.name)
-            return from_file
+            return joblib.load(fp.name)
 
     def value_to_target(self, value, target, **kwargs):
         with target.open("w") as fp:

@@ -30,7 +30,6 @@ if typing.TYPE_CHECKING:
     from dbnd._core.run.databand_run import DatabandRun
 
 
-if typing.TYPE_CHECKING:
     from typing import ContextManager
 
 logger = logging.getLogger(__name__)
@@ -66,9 +65,8 @@ class DatabandContext(SingletonContext):
 
         self.name = name
 
-        self.current_context_uid = "%s_%s" % (
-            utcnow().strftime("%Y%m%d_%H%M%S"),
-            str(uuid.uuid1())[:8],
+        self.current_context_uid = (
+            f'{utcnow().strftime("%Y%m%d_%H%M%S")}_{str(uuid.uuid1())[:8]}'
         )
 
         self.config = config
@@ -167,7 +165,7 @@ class DatabandContext(SingletonContext):
         return self.name == "interactive"
 
     def __repr__(self):
-        return "%s(name='%s')" % (self.__class__.__name__, self.name)
+        return f"{self.__class__.__name__}(name='{self.name}')"
 
     def dbnd_run_task(
         self,
@@ -237,10 +235,7 @@ def _run_user_func(param, value):
 
 
 def load_user_modules(dbnd_config, modules=None):
-    # type: (DbndConfig, List[str]) -> None
-    # loading user modules
-    module_from_config = dbnd_config.get("databand", "module")
-    if module_from_config:
+    if module_from_config := dbnd_config.get("databand", "module"):
         load_python_module(module_from_config, "config file (see [databand].module)")
     if modules:
         for m in modules:

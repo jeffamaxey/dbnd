@@ -6,8 +6,8 @@ def _band_call_str(task):
     if not task:
         return
     if task.task_decorator:
-        return "%s()" % _task_name(task)
-    return "%s.band()" % _task_name(task)
+        return f"{_task_name(task)}()"
+    return f"{_task_name(task)}.band()"
 
 
 def _run_name(task):
@@ -20,13 +20,11 @@ def _safe_task_family(task):
 
     from dbnd._core.task import Task
 
-    if isinstance(task, Task):
-        return _task_name(task)
-    return str(task)
+    return _task_name(task) if isinstance(task, Task) else str(task)
 
 
 def _parameter_name(task, parameter):
-    return "%s.%s" % (task.friendly_task_name, parameter.name)
+    return f"{task.friendly_task_name}.{parameter.name}"
 
 
 def _safe_target(target):

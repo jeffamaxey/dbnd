@@ -49,10 +49,10 @@ def calculate_task_executor_type(submit_tasks, remote_engine, settings):
                 )
                 task_executor_type = AirflowTaskExecutorType.airflow_multiprocess_local
 
-        if (
-            task_executor_type == AirflowTaskExecutorType.airflow_multiprocess_local
-            or task_executor_type == AirflowTaskExecutorType.airflow_kubernetes
-        ):
+        if task_executor_type in [
+            AirflowTaskExecutorType.airflow_multiprocess_local,
+            AirflowTaskExecutorType.airflow_kubernetes,
+        ]:
             from dbnd_airflow.db_utils import (
                 airflow_sql_conn_url,
                 airlow_sql_alchemy_conn,
@@ -78,17 +78,19 @@ def calculate_task_executor_type(submit_tasks, remote_engine, settings):
             )
 
             if (
-                submit_tasks
-                and isinstance(remote_engine, KubernetesEngineConfig)
-                and run_config.enable_airflow_kubernetes
+                (
+                    submit_tasks
+                    and isinstance(remote_engine, KubernetesEngineConfig)
+                    and run_config.enable_airflow_kubernetes
+                )
+                and task_executor_type
+                != AirflowTaskExecutorType.airflow_kubernetes
             ):
-                if task_executor_type != AirflowTaskExecutorType.airflow_kubernetes:
-                    logger.info("Using dedicated kubernetes executor for this run")
-                    task_executor_type = AirflowTaskExecutorType.airflow_kubernetes
-                    parallel = True
-    else:
-        if parallel:
-            logger.warning("Airflow is not installed, parallel mode is not supported")
+                logger.info("Using dedicated kubernetes executor for this run")
+                task_executor_type = AirflowTaskExecutorType.airflow_kubernetes
+                parallel = True
+    elif parallel:
+        logger.warning("Airflow is not installed, parallel mode is not supported")
 
     all_executor_types = [TaskExecutorType.local]
     if is_airflow_enabled():
@@ -97,14 +99,12 @@ def calculate_task_executor_type(submit_tasks, remote_engine, settings):
         all_executor_types.extend(AirflowTaskExecutorType.all())
 
     if task_executor_type not in all_executor_types:
-        raise DatabandConfigError("Unsupported engine type %s" % task_executor_type)
+        raise DatabandConfigError(f"Unsupported engine type {task_executor_type}")
 
     return task_executor_type, parallel
 
 
 def get_task_executor(run, task_executor_type, host_engine, target_engine, task_runs):
-    # type: (DatabandRun, str, EngineConfig, EngineConfig, List[TaskRun]) -> TaskExecutor
-
     if task_executor_type == TaskExecutorType.local:
         return LocalTaskExecutor(
             run,
@@ -113,15 +113,14 @@ def get_task_executor(run, task_executor_type, host_engine, target_engine, task_
             target_engine=target_engine,
             task_runs=task_runs,
         )
-    else:
-        from dbnd_airflow.dbnd_task_executor.dbnd_task_executor_via_airflow import (
-            AirflowTaskExecutor,
-        )
+    from dbnd_airflow.dbnd_task_executor.dbnd_task_executor_via_airflow import (
+        AirflowTaskExecutor,
+    )
 
-        return AirflowTaskExecutor(
-            run,
-            task_executor_type=task_executor_type,
-            host_engine=host_engine,
-            target_engine=target_engine,
-            task_runs=task_runs,
-        )
+    return AirflowTaskExecutor(
+        run,
+        task_executor_type=task_executor_type,
+        host_engine=host_engine,
+        target_engine=target_engine,
+        task_runs=task_runs,
+    )
